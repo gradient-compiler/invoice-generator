@@ -43,6 +43,8 @@ next-env.d.ts
 # database
 /data/*.db
 /data/*.db-journal
+/data/*.db-shm
+/data/*.db-wal
 
 # uploads
 /public/uploads/*
