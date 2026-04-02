@@ -160,6 +160,7 @@ export const businessSettingsSchema = z.object({
   phone: z.string().optional(),
   email: z.string().email("Invalid email").optional().or(z.literal("")),
   gstRegistered: z.coerce.boolean().default(false),
+  gstRate: z.coerce.number().min(0).max(100).default(9),
   gstNumber: z.string().optional(),
   defaultCurrency: z.string().default("SGD"),
   invoicePrefix: z.string().min(1).default("INV"),
@@ -172,6 +173,13 @@ export const businessSettingsSchema = z.object({
   defaultTemplate: z.string().default("clean-professional"),
   defaultPaymentTerms: z.string().default("Due upon receipt"),
   latePaymentNote: z.string().optional(),
+  smtpHost: z.string().optional(),
+  smtpPort: z.coerce.number().int().min(1).max(65535).optional(),
+  smtpUser: z.string().optional(),
+  smtpPass: z.string().optional(),
+  smtpFromName: z.string().optional(),
+  smtpFromEmail: z.string().email("Invalid SMTP from email").optional().or(z.literal("")),
+  smtpSecure: z.coerce.boolean().optional(),
 });
 
 export type BusinessSettingsFormValues = z.infer<typeof businessSettingsSchema>;

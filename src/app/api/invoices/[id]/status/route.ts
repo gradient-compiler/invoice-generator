@@ -4,6 +4,8 @@ import { invoices } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { ensureDbInitialized } from "@/db/init";
 import { requireAuth } from "@/lib/auth";
+import { parseId } from "@/lib/parse-id";
+import { logAudit } from "@/lib/audit";
 import { z } from "zod";
 
 const statusSchema = z.object({
@@ -19,6 +21,10 @@ export async function PATCH(
     if (authError) return authError;
     ensureDbInitialized();
     const { id } = await params;
+    const parsedId = parseId(id);
+    if ("error" in parsedId) return parsedId.error;
+    const numericId = parsedId.id;
+
     const body = await request.json();
     const parsed = statusSchema.safeParse(body);
     if (!parsed.success) {
@@ -32,7 +38,7 @@ export async function PATCH(
     const existing = db
       .select()
       .from(invoices)
-      .where(eq(invoices.id, parseInt(id)))
+      .where(eq(invoices.id, numericId))
       .get();
 
     if (!existing) {
@@ -55,10 +61,11 @@ export async function PATCH(
     const result = db
       .update(invoices)
       .set(updateData)
-      .where(eq(invoices.id, parseInt(id)))
+      .where(eq(invoices.id, numericId))
       .returning()
       .get();
 
+    logAudit({ action: "invoice_status_change", entityType: "invoice", entityId: id, detail: `${existing.status} -> ${status}`, request });
     return NextResponse.json(result);
   } catch (error) {
     console.error("Update invoice status error:", error);

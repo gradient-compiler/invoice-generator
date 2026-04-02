@@ -103,14 +103,16 @@ export function verifySessionToken(token: string): boolean {
  */
 export function buildSessionCookie(token: string): string {
   const maxAge = Math.floor(SESSION_DURATION_MS / 1000);
-  return `${COOKIE_NAME}=${token}; HttpOnly; SameSite=Strict; Path=/; Max-Age=${maxAge}`;
+  const secure = process.env.NODE_ENV === "production" ? "; Secure" : "";
+  return `${COOKIE_NAME}=${token}; HttpOnly; SameSite=Strict; Path=/; Max-Age=${maxAge}${secure}`;
 }
 
 /**
  * Build a Set-Cookie header that clears the session.
  */
 export function buildClearSessionCookie(): string {
-  return `${COOKIE_NAME}=; HttpOnly; SameSite=Strict; Path=/; Max-Age=0`;
+  const secure = process.env.NODE_ENV === "production" ? "; Secure" : "";
+  return `${COOKIE_NAME}=; HttpOnly; SameSite=Strict; Path=/; Max-Age=0${secure}`;
 }
 
 /**

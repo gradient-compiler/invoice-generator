@@ -6,12 +6,13 @@ import { ensureDbInitialized } from "@/db/init";
 import { requireAuth } from "@/lib/auth";
 import { logAudit } from "@/lib/audit";
 import { safeEncrypt, safeDecrypt } from "@/lib/crypto";
+import { businessSettingsSchema } from "@/lib/validators";
 
 const ENCRYPTED_FIELDS = ["smtpPass", "bankAccount", "bankHolder", "paynowNumber", "gstNumber"] as const;
 
 const SETTINGS_UPDATABLE_FIELDS = new Set([
   "businessName", "address", "phone", "email", "logoPath",
-  "gstRegistered", "gstNumber", "defaultCurrency",
+  "gstRegistered", "gstRate", "gstNumber", "defaultCurrency",
   "invoicePrefix", "receiptPrefix", "creditNotePrefix",
   "bankName", "bankAccount", "bankHolder", "paynowNumber",
   "defaultTemplate", "defaultPaymentTerms", "latePaymentNote",
@@ -107,6 +108,14 @@ export async function PUT(request: Request) {
     if (authError) return authError;
 
     const body = await request.json();
+    // Validate with partial schema — allow updating individual fields
+    const parsed = businessSettingsSchema.partial().safeParse(body);
+    if (!parsed.success) {
+      return NextResponse.json(
+        { error: parsed.error.issues.map((i) => i.message).join(", ") },
+        { status: 400 }
+      );
+    }
     const filteredBody = pickAllowed(body, SETTINGS_UPDATABLE_FIELDS);
     const encryptedBody = encryptSettingsFields(filteredBody);
 

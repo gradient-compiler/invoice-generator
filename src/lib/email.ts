@@ -38,6 +38,8 @@ export function getSmtpConfig(): SmtpConfig | null {
   };
 }
 
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
 export async function sendEmail(opts: {
   to: string;
   subject: string;
@@ -47,6 +49,11 @@ export async function sendEmail(opts: {
   const config = getSmtpConfig();
   if (!config) {
     throw new Error("SMTP not configured. Go to Settings > Email / SMTP to set up email.");
+  }
+
+  // Validate recipient email format before sending
+  if (!EMAIL_REGEX.test(opts.to)) {
+    throw new Error("Invalid recipient email address");
   }
 
   const transporter = nodemailer.createTransport({

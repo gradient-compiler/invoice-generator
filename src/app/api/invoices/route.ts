@@ -10,6 +10,7 @@ import { eq, and, sql } from "drizzle-orm";
 import { ensureDbInitialized } from "@/db/init";
 import { requireAuth } from "@/lib/auth";
 import { invoiceSchema } from "@/lib/validators";
+import { claimNextInvoiceNumber } from "@/lib/invoice-number";
 
 export async function GET(request: Request) {
   try {
@@ -110,22 +111,15 @@ export async function POST(request: Request) {
       lineItems,
     } = parsed.data;
 
-    // Get settings for invoice number generation
+    // Get settings for defaults
     const settings = db
       .select()
       .from(businessSettings)
       .where(eq(businessSettings.id, 1))
       .get();
 
-    const prefix = settings?.invoicePrefix || "INV";
-    const nextNum = settings?.nextInvoiceNum || 1;
-    const invoiceNumber = `${prefix}-${String(nextNum).padStart(5, "0")}`;
-
-    // Atomically increment the next invoice number
-    db.update(businessSettings)
-      .set({ nextInvoiceNum: nextNum + 1 })
-      .where(eq(businessSettings.id, 1))
-      .run();
+    // Atomically claim next invoice number (prevents race conditions)
+    const { invoiceNumber } = claimNextInvoiceNumber();
 
     // Calculate subtotal from line items
     const items = (lineItems || []).map(

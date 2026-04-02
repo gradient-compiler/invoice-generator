@@ -10,6 +10,7 @@ import { requireAuth } from "@/lib/auth";
 const UPLOAD_DIR = path.join(process.cwd(), "public", "uploads");
 const MAX_SIZE = 2 * 1024 * 1024; // 2MB
 const ALLOWED_TYPES = ["image/png", "image/jpeg", "image/svg+xml", "image/webp"];
+const ALLOWED_EXTENSIONS = new Set(["png", "jpg", "jpeg", "svg", "webp"]);
 
 export async function POST(request: Request) {
   try {
@@ -52,16 +53,34 @@ export async function POST(request: Request) {
       }
     }
 
-    // Save new file
-    const ext = file.name.split(".").pop() || "png";
+    // Save new file — sanitize extension to prevent path traversal
+    const rawExt = (file.name.split(".").pop() || "png").toLowerCase().replace(/[^a-z]/g, "");
+    const ext = ALLOWED_EXTENSIONS.has(rawExt) ? rawExt : "png";
     const filename = `logo-${Date.now()}.${ext}`;
     const filepath = path.join(UPLOAD_DIR, filename);
+
+    // Verify resolved path is within UPLOAD_DIR (prevent path traversal)
+    if (!path.resolve(filepath).startsWith(path.resolve(UPLOAD_DIR))) {
+      return NextResponse.json({ error: "Invalid file path" }, { status: 400 });
+    }
 
     if (!fs.existsSync(UPLOAD_DIR)) {
       fs.mkdirSync(UPLOAD_DIR, { recursive: true });
     }
 
     const buffer = Buffer.from(await file.arrayBuffer());
+
+    // Strip dangerous content from SVG files
+    if (ext === "svg") {
+      const svgContent = buffer.toString("utf-8");
+      if (/<script[\s>]/i.test(svgContent) || /on\w+\s*=/i.test(svgContent)) {
+        return NextResponse.json(
+          { error: "SVG contains potentially unsafe content (scripts or event handlers)" },
+          { status: 400 }
+        );
+      }
+    }
+
     fs.writeFileSync(filepath, buffer);
 
     const logoPath = `/uploads/${filename}`;

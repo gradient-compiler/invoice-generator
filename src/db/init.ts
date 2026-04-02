@@ -174,6 +174,8 @@ export function ensureDbInitialized() {
 
   // Add admin_password_hash to business_settings (idempotent)
   try { db.run(sql.raw("ALTER TABLE business_settings ADD COLUMN admin_password_hash TEXT")); } catch {}
+  // Add configurable GST rate (idempotent)
+  try { db.run(sql.raw("ALTER TABLE business_settings ADD COLUMN gst_rate REAL DEFAULT 9")); } catch {}
 
   // Add share_token to invoices (idempotent)
   try { db.run(sql.raw("ALTER TABLE invoices ADD COLUMN share_token TEXT")); } catch {}

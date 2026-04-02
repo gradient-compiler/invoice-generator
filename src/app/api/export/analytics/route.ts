@@ -4,11 +4,20 @@ import { sql } from "drizzle-orm";
 import { ensureDbInitialized } from "@/db/init";
 import { buildCsv } from "@/lib/csv";
 import { requireAuth } from "@/lib/auth";
+import { checkRateLimit, getClientIp } from "@/lib/rate-limit";
+import { logAudit } from "@/lib/audit";
 
 export async function GET(request: Request) {
   try {
     const authError = requireAuth(request);
     if (authError) return authError;
+
+    // Rate limit exports: max 10 per minute
+    const rl = checkRateLimit(`export:${getClientIp(request)}`, { maxRequests: 10, windowMs: 60_000 });
+    if (!rl.allowed) {
+      return new Response("Too many requests", { status: 429 });
+    }
+
     ensureDbInitialized();
 
     const rows = db
@@ -27,6 +36,7 @@ export async function GET(request: Request) {
     const csv = buildCsv(headers, rows as Record<string, unknown>[]);
     const date = new Date().toISOString().split("T")[0];
 
+    logAudit({ action: "export_data", entityType: "export", detail: "analytics CSV", request });
     return new Response(csv, {
       headers: {
         "Content-Type": "text/csv",
