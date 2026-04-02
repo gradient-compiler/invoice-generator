@@ -46,7 +46,7 @@ function crc16(input: string): string {
 /**
  * Build the PayNow QR payload string following the SGQR / EMV QRCPS standard.
  */
-function buildPayNowPayload(params: PayNowQRParams): string {
+export function buildPayNowPayload(params: PayNowQRParams): string {
   const {
     uen,
     mobile,
