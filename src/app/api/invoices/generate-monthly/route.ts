@@ -11,9 +11,12 @@ import {
 } from "@/db/schema";
 import { eq, and, sql } from "drizzle-orm";
 import { ensureDbInitialized } from "@/db/init";
+import { requireAuth } from "@/lib/auth";
 
 export async function POST(request: Request) {
   try {
+    const authError = requireAuth(request);
+    if (authError) return authError;
     ensureDbInitialized();
 
     const body = await request.json();

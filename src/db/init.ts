@@ -158,6 +158,60 @@ export function ensureDbInitialized() {
     config_json TEXT
   )`);
 
+  // Add SMTP columns to business_settings (idempotent)
+  const smtpCols = [
+    "smtp_host TEXT",
+    "smtp_port INTEGER DEFAULT 587",
+    "smtp_user TEXT",
+    "smtp_pass TEXT",
+    "smtp_from_name TEXT",
+    "smtp_from_email TEXT",
+    "smtp_secure INTEGER DEFAULT 0",
+  ];
+  for (const col of smtpCols) {
+    try { db.run(sql.raw(`ALTER TABLE business_settings ADD COLUMN ${col}`)); } catch {}
+  }
+
+  // Add admin_password_hash to business_settings (idempotent)
+  try { db.run(sql.raw("ALTER TABLE business_settings ADD COLUMN admin_password_hash TEXT")); } catch {}
+
+  // Add share_token to invoices (idempotent)
+  try { db.run(sql.raw("ALTER TABLE invoices ADD COLUMN share_token TEXT")); } catch {}
+  try { db.run(sql.raw("ALTER TABLE invoices ADD COLUMN share_token_expires_at TEXT")); } catch {}
+  try { db.run(sql.raw("CREATE UNIQUE INDEX IF NOT EXISTS idx_invoices_share_token ON invoices(share_token)")); } catch {}
+
+  // Create recurring_invoices table
+  db.run(sql`CREATE TABLE IF NOT EXISTS recurring_invoices (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    client_id INTEGER NOT NULL REFERENCES clients(id),
+    frequency TEXT NOT NULL DEFAULT 'monthly',
+    line_items_json TEXT NOT NULL,
+    currency TEXT DEFAULT 'SGD',
+    discount_type TEXT,
+    discount_value REAL DEFAULT 0,
+    discount_label TEXT,
+    payment_terms TEXT DEFAULT 'Due upon receipt',
+    template TEXT DEFAULT 'clean-professional',
+    notes TEXT,
+    next_generate_date TEXT NOT NULL,
+    last_generated_date TEXT,
+    last_generated_invoice_id INTEGER,
+    is_active INTEGER DEFAULT 1,
+    created_at TEXT DEFAULT (datetime('now')),
+    updated_at TEXT DEFAULT (datetime('now'))
+  )`);
+
+  // Create audit_logs table
+  db.run(sql`CREATE TABLE IF NOT EXISTS audit_logs (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    action TEXT NOT NULL,
+    entity_type TEXT NOT NULL,
+    entity_id TEXT,
+    detail TEXT,
+    ip_address TEXT,
+    created_at TEXT DEFAULT (datetime('now'))
+  )`);
+
   // Seed default data
   const settings = db.select().from(businessSettings).all();
   if (settings.length === 0) {

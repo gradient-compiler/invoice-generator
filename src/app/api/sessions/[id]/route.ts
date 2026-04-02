@@ -3,12 +3,16 @@ import { db } from "@/db";
 import { sessions, clients, rateTiers } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { ensureDbInitialized } from "@/db/init";
+import { requireAuth } from "@/lib/auth";
+import { sessionSchema } from "@/lib/validators";
 
 export async function GET(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const authError = requireAuth(request);
+    if (authError) return authError;
     ensureDbInitialized();
     const { id } = await params;
 
@@ -59,9 +63,18 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const authError = requireAuth(request);
+    if (authError) return authError;
     ensureDbInitialized();
     const { id } = await params;
     const body = await request.json();
+    const parsed = sessionSchema.partial().safeParse(body);
+    if (!parsed.success) {
+      return NextResponse.json(
+        { error: parsed.error.issues.map((i) => i.message).join(", ") },
+        { status: 400 }
+      );
+    }
 
     const existing = db
       .select()
@@ -78,7 +91,7 @@ export async function PUT(
 
     const result = db
       .update(sessions)
-      .set(body)
+      .set(parsed.data)
       .where(eq(sessions.id, parseInt(id)))
       .returning()
       .get();
@@ -98,6 +111,8 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const authError = requireAuth(request);
+    if (authError) return authError;
     ensureDbInitialized();
     const { id } = await params;
 

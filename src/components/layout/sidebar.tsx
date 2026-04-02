@@ -13,13 +13,15 @@ import {
   Settings,
   ChevronLeft,
   ChevronRight,
+  RefreshCw,
 } from "lucide-react";
 import { useState } from "react";
 import { ThemeToggle } from "@/components/theme-toggle";
 
 const navItems = [
   { href: "/", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/invoices", label: "Invoices", icon: FileText },
+  { href: "/invoices", label: "Invoices", icon: FileText, exact: false },
+  { href: "/invoices/recurring", label: "Recurring", icon: RefreshCw },
   { href: "/clients", label: "Clients", icon: Users },
   { href: "/sessions", label: "Sessions", icon: Calendar },
   { href: "/receipts", label: "Receipts", icon: Receipt },
@@ -30,6 +32,8 @@ const navItems = [
 export function Sidebar() {
   const pathname = usePathname();
   const [collapsed, setCollapsed] = useState(false);
+
+  if (pathname.startsWith("/portal")) return null;
 
   return (
     <aside
@@ -58,7 +62,11 @@ export function Sidebar() {
           const isActive =
             item.href === "/"
               ? pathname === "/"
-              : pathname.startsWith(item.href);
+              : item.href === "/invoices"
+                ? pathname === "/invoices" ||
+                  (pathname.startsWith("/invoices/") &&
+                    !pathname.startsWith("/invoices/recurring"))
+                : pathname.startsWith(item.href);
           return (
             <Link
               key={item.href}

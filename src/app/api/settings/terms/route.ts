@@ -3,9 +3,13 @@ import { db } from "@/db";
 import { terms } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { ensureDbInitialized } from "@/db/init";
+import { requireAuth } from "@/lib/auth";
+import { termSchema } from "@/lib/validators";
 
 export async function GET(request: Request) {
   try {
+    const authError = requireAuth(request);
+    if (authError) return authError;
     ensureDbInitialized();
 
     const { searchParams } = new URL(request.url);
@@ -34,17 +38,19 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
+    const authError = requireAuth(request);
+    if (authError) return authError;
     ensureDbInitialized();
 
     const body = await request.json();
-    const { name, startDate, endDate, year, isActive } = body;
-
-    if (!name || !startDate || !endDate || !year) {
+    const parsed = termSchema.safeParse(body);
+    if (!parsed.success) {
       return NextResponse.json(
-        { error: "Name, startDate, endDate, and year are required" },
+        { error: parsed.error.issues.map((i) => i.message).join(", ") },
         { status: 400 }
       );
     }
+    const { name, startDate, endDate, year, isActive } = parsed.data;
 
     const result = db
       .insert(terms)

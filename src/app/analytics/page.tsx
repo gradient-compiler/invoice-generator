@@ -152,6 +152,15 @@ export default function AnalyticsPage() {
       <PageHeader
         title="Analytics"
         description="Income tracking, invoice insights, and performance metrics"
+        actions={
+          <button
+            type="button"
+            onClick={() => window.open("/api/export/analytics", "_blank")}
+            className="rounded-lg border border-border px-4 py-2 text-sm font-medium hover:bg-accent"
+          >
+            Export CSV
+          </button>
+        }
       />
 
       {/* KPI Cards */}

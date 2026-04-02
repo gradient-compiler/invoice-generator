@@ -3,9 +3,13 @@ import { db } from "@/db";
 import { receipts, invoices, clients, businessSettings } from "@/db/schema";
 import { eq, sql } from "drizzle-orm";
 import { ensureDbInitialized } from "@/db/init";
+import { requireAuth } from "@/lib/auth";
+import { receiptSchema } from "@/lib/validators";
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
+    const authError = requireAuth(request);
+    if (authError) return authError;
     ensureDbInitialized();
 
     const result = db
@@ -40,17 +44,19 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
+    const authError = requireAuth(request);
+    if (authError) return authError;
     ensureDbInitialized();
 
     const body = await request.json();
-    const { invoiceId, paymentDate, paymentMethod, amount, notes } = body;
-
-    if (!invoiceId || !paymentDate || !amount) {
+    const parsed = receiptSchema.safeParse(body);
+    if (!parsed.success) {
       return NextResponse.json(
-        { error: "invoiceId, paymentDate, and amount are required" },
+        { error: parsed.error.issues.map((i) => i.message).join(", ") },
         { status: 400 }
       );
     }
+    const { invoiceId, paymentDate, paymentMethod, amount, notes } = parsed.data;
 
     // Verify invoice exists
     const invoice = db
@@ -96,11 +102,19 @@ export async function POST(request: Request) {
       .returning()
       .get();
 
-    // Update invoice status to paid and set amountPaid
+    // Accumulate amountPaid from all receipts for this invoice
+    const totalPaidRow = db
+      .select({ total: sql<number>`COALESCE(SUM(${receipts.amount}), 0)` })
+      .from(receipts)
+      .where(eq(receipts.invoiceId, invoiceId))
+      .get()!;
+    const totalPaid = totalPaidRow.total;
+    const newStatus = totalPaid >= invoice.total ? "paid" : invoice.status === "draft" ? "draft" : invoice.status;
+
     db.update(invoices)
       .set({
-        status: "paid",
-        amountPaid: amount,
+        status: newStatus,
+        amountPaid: totalPaid,
         updatedAt: new Date().toISOString(),
       })
       .where(eq(invoices.id, invoiceId))

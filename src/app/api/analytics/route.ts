@@ -3,9 +3,12 @@ import { db } from "@/db";
 import { clients, invoices, sessions, receipts } from "@/db/schema";
 import { eq, sql, and } from "drizzle-orm";
 import { ensureDbInitialized } from "@/db/init";
+import { requireAuth } from "@/lib/auth";
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
+    const authError = requireAuth(request);
+    if (authError) return authError;
     ensureDbInitialized();
 
     // --- Status breakdown ---

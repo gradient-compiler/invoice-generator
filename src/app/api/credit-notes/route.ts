@@ -3,9 +3,13 @@ import { db } from "@/db";
 import { creditNotes, clients, businessSettings } from "@/db/schema";
 import { eq, and, sql } from "drizzle-orm";
 import { ensureDbInitialized } from "@/db/init";
+import { requireAuth } from "@/lib/auth";
+import { creditNoteSchema } from "@/lib/validators";
 
 export async function GET(request: Request) {
   try {
+    const authError = requireAuth(request);
+    if (authError) return authError;
     ensureDbInitialized();
 
     const { searchParams } = new URL(request.url);
@@ -54,17 +58,19 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
+    const authError = requireAuth(request);
+    if (authError) return authError;
     ensureDbInitialized();
 
     const body = await request.json();
-    const { clientId, originalInvoiceId, amount, reason } = body;
-
-    if (!clientId || !amount) {
+    const parsed = creditNoteSchema.safeParse(body);
+    if (!parsed.success) {
       return NextResponse.json(
-        { error: "clientId and amount are required" },
+        { error: parsed.error.issues.map((i) => i.message).join(", ") },
         { status: 400 }
       );
     }
+    const { clientId, originalInvoiceId, amount, reason } = parsed.data;
 
     // Generate credit note number
     const settings = db

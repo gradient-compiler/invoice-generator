@@ -3,9 +3,14 @@ import { db } from "@/db";
 import { clients } from "@/db/schema";
 import { eq, and, like, sql } from "drizzle-orm";
 import { ensureDbInitialized } from "@/db/init";
+import { requireAuth } from "@/lib/auth";
+import { clientSchema } from "@/lib/validators";
+import { safeEncrypt, safeDecrypt } from "@/lib/crypto";
 
 export async function GET(request: Request) {
   try {
+    const authError = requireAuth(request);
+    if (authError) return authError;
     ensureDbInitialized();
 
     const { searchParams } = new URL(request.url);
@@ -43,7 +48,14 @@ export async function GET(request: Request) {
       .orderBy(clients.name)
       .all();
 
-    return NextResponse.json(result);
+    const decryptedClients = result.map((c: any) => ({
+      ...c,
+      email: safeDecrypt(c.email),
+      phone: safeDecrypt(c.phone),
+      address: safeDecrypt(c.address),
+    }));
+
+    return NextResponse.json(decryptedClients);
   } catch (error) {
     console.error("List clients error:", error);
     return NextResponse.json(
@@ -55,23 +67,28 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
+    const authError = requireAuth(request);
+    if (authError) return authError;
     ensureDbInitialized();
 
     const body = await request.json();
-    const { name, parentName, email, phone, address, notes, gradeLevel, clientType } = body;
-
-    if (!name) {
-      return NextResponse.json({ error: "Name is required" }, { status: 400 });
+    const parsed = clientSchema.safeParse(body);
+    if (!parsed.success) {
+      return NextResponse.json(
+        { error: parsed.error.issues.map((i) => i.message).join(", ") },
+        { status: 400 }
+      );
     }
+    const { name, parentName, email, phone, address, notes, gradeLevel, clientType } = parsed.data;
 
     const result = db
       .insert(clients)
       .values({
         name,
         parentName: parentName || null,
-        email: email || null,
-        phone: phone || null,
-        address: address || null,
+        email: safeEncrypt(email) || null,
+        phone: safeEncrypt(phone) || null,
+        address: safeEncrypt(address) || null,
         notes: notes || null,
         gradeLevel: gradeLevel || null,
         clientType: clientType || "tuition",
@@ -80,7 +97,14 @@ export async function POST(request: Request) {
       .returning()
       .get();
 
-    return NextResponse.json(result, { status: 201 });
+    const decryptedResult = {
+      ...result,
+      email: safeDecrypt(result.email),
+      phone: safeDecrypt(result.phone),
+      address: safeDecrypt(result.address),
+    };
+
+    return NextResponse.json(decryptedResult, { status: 201 });
   } catch (error) {
     console.error("Create client error:", error);
     return NextResponse.json(

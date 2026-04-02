@@ -5,6 +5,7 @@ import { eq } from "drizzle-orm";
 import { ensureDbInitialized } from "@/db/init";
 import path from "path";
 import fs from "fs";
+import { requireAuth } from "@/lib/auth";
 
 const UPLOAD_DIR = path.join(process.cwd(), "public", "uploads");
 const MAX_SIZE = 2 * 1024 * 1024; // 2MB
@@ -12,6 +13,8 @@ const ALLOWED_TYPES = ["image/png", "image/jpeg", "image/svg+xml", "image/webp"]
 
 export async function POST(request: Request) {
   try {
+    const authError = requireAuth(request);
+    if (authError) return authError;
     ensureDbInitialized();
 
     const formData = await request.formData();
@@ -78,8 +81,10 @@ export async function POST(request: Request) {
   }
 }
 
-export async function DELETE() {
+export async function DELETE(request: Request) {
   try {
+    const authError = requireAuth(request);
+    if (authError) return authError;
     ensureDbInitialized();
 
     const settings = db

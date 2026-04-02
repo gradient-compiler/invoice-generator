@@ -104,6 +104,13 @@ export default function InvoicesPage() {
         description="Manage and track your invoices"
         actions={
           <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => window.open(`/api/export/invoices?status=${statusFilter === "all" ? "" : statusFilter}`, "_blank")}
+              className="rounded-lg border border-border px-4 py-2 text-sm font-medium hover:bg-accent"
+            >
+              Export CSV
+            </button>
             <Link
               href="/invoices/generate"
               className="rounded-lg border border-border px-4 py-2 text-sm font-medium hover:bg-accent"

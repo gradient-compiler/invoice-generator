@@ -3,12 +3,30 @@ import { db } from "@/db";
 import { clients } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { ensureDbInitialized } from "@/db/init";
+import { requireAuth } from "@/lib/auth";
+import { clientSchema } from "@/lib/validators";
+import { safeEncrypt, safeDecrypt } from "@/lib/crypto";
+
+const CLIENT_UPDATABLE_FIELDS = new Set([
+  "name", "parentName", "email", "phone", "address",
+  "notes", "gradeLevel", "clientType", "isActive",
+]);
+
+function pickAllowed<T extends Record<string, unknown>>(obj: T, allowed: Set<string>): Partial<T> {
+  const result: Record<string, unknown> = {};
+  for (const key of Object.keys(obj)) {
+    if (allowed.has(key)) result[key] = obj[key];
+  }
+  return result as Partial<T>;
+}
 
 export async function GET(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const authError = requireAuth(request);
+    if (authError) return authError;
     ensureDbInitialized();
     const { id } = await params;
 
@@ -22,7 +40,14 @@ export async function GET(
       return NextResponse.json({ error: "Client not found" }, { status: 404 });
     }
 
-    return NextResponse.json(client);
+    const decryptedClient = {
+      ...client,
+      email: safeDecrypt(client.email),
+      phone: safeDecrypt(client.phone),
+      address: safeDecrypt(client.address),
+    };
+
+    return NextResponse.json(decryptedClient);
   } catch (error) {
     console.error("Get client error:", error);
     return NextResponse.json(
@@ -37,9 +62,18 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const authError = requireAuth(request);
+    if (authError) return authError;
     ensureDbInitialized();
     const { id } = await params;
     const body = await request.json();
+    const parsed = clientSchema.partial().safeParse(body);
+    if (!parsed.success) {
+      return NextResponse.json(
+        { error: parsed.error.issues.map((i) => i.message).join(", ") },
+        { status: 400 }
+      );
+    }
 
     const existing = db
       .select()
@@ -51,17 +85,33 @@ export async function PUT(
       return NextResponse.json({ error: "Client not found" }, { status: 404 });
     }
 
+    const filteredData = pickAllowed(
+      parsed.data as Record<string, unknown>,
+      CLIENT_UPDATABLE_FIELDS
+    );
+
+    if (filteredData.email !== undefined) filteredData.email = safeEncrypt(filteredData.email as string);
+    if (filteredData.phone !== undefined) filteredData.phone = safeEncrypt(filteredData.phone as string);
+    if (filteredData.address !== undefined) filteredData.address = safeEncrypt(filteredData.address as string);
+
     const result = db
       .update(clients)
       .set({
-        ...body,
+        ...filteredData,
         updatedAt: new Date().toISOString(),
       })
       .where(eq(clients.id, parseInt(id)))
       .returning()
       .get();
 
-    return NextResponse.json(result);
+    const decryptedResult = {
+      ...result,
+      email: safeDecrypt(result.email),
+      phone: safeDecrypt(result.phone),
+      address: safeDecrypt(result.address),
+    };
+
+    return NextResponse.json(decryptedResult);
   } catch (error) {
     console.error("Update client error:", error);
     return NextResponse.json(
@@ -76,6 +126,8 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const authError = requireAuth(request);
+    if (authError) return authError;
     ensureDbInitialized();
     const { id } = await params;
 

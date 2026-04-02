@@ -14,7 +14,7 @@ import {
   CompactDetailedPreview,
 } from "@/components/template-previews";
 
-type Tab = "business" | "rates" | "terms" | "templates" | "appearance";
+type Tab = "business" | "rates" | "terms" | "templates" | "appearance" | "email";
 
 export default function SettingsPage() {
   const [activeTab, setActiveTab] = useState<Tab>("business");
@@ -25,6 +25,7 @@ export default function SettingsPage() {
     { id: "terms", label: "Terms" },
     { id: "templates", label: "Templates" },
     { id: "appearance", label: "Appearance" },
+    { id: "email", label: "Email / SMTP" },
   ];
 
   return (
@@ -56,6 +57,7 @@ export default function SettingsPage() {
         {activeTab === "terms" && <TermsTab />}
         {activeTab === "templates" && <TemplatesTab />}
         {activeTab === "appearance" && <AppearanceTab />}
+        {activeTab === "email" && <EmailSmtpTab />}
       </div>
     </PageContainer>
   );
@@ -960,6 +962,178 @@ function Field({
     <div className="space-y-1.5">
       <label className="text-sm font-medium text-foreground">{label}</label>
       {children}
+    </div>
+  );
+}
+
+// ─── EMAIL / SMTP TAB ───
+function EmailSmtpTab() {
+  const [settings, setSettings] = useState<Partial<BusinessSettings>>({});
+  const [saving, setSaving] = useState(false);
+  const [testing, setTesting] = useState(false);
+  const [message, setMessage] = useState("");
+
+  useEffect(() => {
+    fetch("/api/settings")
+      .then((r) => r.json())
+      .then(setSettings)
+      .catch(() => {});
+  }, []);
+
+  const update = (field: string, value: string | boolean | number) => {
+    setSettings((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const save = async () => {
+    setSaving(true);
+    setMessage("");
+    try {
+      const res = await fetch("/api/settings", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(settings),
+      });
+      if (res.ok) setMessage("SMTP settings saved!");
+      else setMessage("Failed to save settings");
+    } catch {
+      setMessage("Error saving settings");
+    }
+    setSaving(false);
+  };
+
+  const sendTest = async () => {
+    setTesting(true);
+    setMessage("");
+    try {
+      // Save first so the test uses current values
+      await fetch("/api/settings", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(settings),
+      });
+      const res = await fetch("/api/email/test", { method: "POST" });
+      const data = await res.json();
+      if (res.ok) setMessage(`Test email sent to ${data.sentTo}`);
+      else setMessage(data.error || "Failed to send test email");
+    } catch {
+      setMessage("Error sending test email");
+    }
+    setTesting(false);
+  };
+
+  const smtpConfigured = settings.smtpHost && settings.smtpUser && settings.smtpPass;
+
+  return (
+    <div className="max-w-2xl space-y-6">
+      <Section title="SMTP Configuration">
+        <p className="text-sm text-muted-foreground -mt-2 mb-4">
+          Configure SMTP to send invoices and payment reminders by email.
+          Use Gmail App Passwords, SendGrid, or any SMTP provider.
+        </p>
+        <div className="grid grid-cols-2 gap-4">
+          <Field label="SMTP Host">
+            <input
+              type="text"
+              value={(settings as Record<string, unknown>).smtpHost as string || ""}
+              onChange={(e) => update("smtpHost", e.target.value)}
+              className="input-field"
+              placeholder="smtp.gmail.com"
+            />
+          </Field>
+          <Field label="SMTP Port">
+            <input
+              type="number"
+              value={(settings as Record<string, unknown>).smtpPort as number || 587}
+              onChange={(e) => update("smtpPort", parseInt(e.target.value) || 587)}
+              className="input-field"
+              placeholder="587"
+            />
+          </Field>
+        </div>
+        <div className="grid grid-cols-2 gap-4">
+          <Field label="SMTP Username">
+            <input
+              type="text"
+              value={(settings as Record<string, unknown>).smtpUser as string || ""}
+              onChange={(e) => update("smtpUser", e.target.value)}
+              className="input-field"
+              placeholder="your@email.com"
+            />
+          </Field>
+          <Field label="SMTP Password">
+            <input
+              type="password"
+              value={(settings as Record<string, unknown>).smtpPass as string || ""}
+              onChange={(e) => update("smtpPass", e.target.value)}
+              className="input-field"
+              placeholder="App password or SMTP password"
+            />
+          </Field>
+        </div>
+        <label className="flex items-center gap-2 text-sm">
+          <input
+            type="checkbox"
+            checked={(settings as Record<string, unknown>).smtpSecure as boolean || false}
+            onChange={(e) => update("smtpSecure", e.target.checked)}
+            className="rounded"
+          />
+          Use SSL/TLS (port 465). Leave unchecked for STARTTLS (port 587).
+        </label>
+      </Section>
+
+      <Section title="Sender Details">
+        <div className="grid grid-cols-2 gap-4">
+          <Field label="From Name">
+            <input
+              type="text"
+              value={(settings as Record<string, unknown>).smtpFromName as string || ""}
+              onChange={(e) => update("smtpFromName", e.target.value)}
+              className="input-field"
+              placeholder={settings.businessName || "Your Business"}
+            />
+          </Field>
+          <Field label="From Email">
+            <input
+              type="email"
+              value={(settings as Record<string, unknown>).smtpFromEmail as string || ""}
+              onChange={(e) => update("smtpFromEmail", e.target.value)}
+              className="input-field"
+              placeholder={settings.email || "noreply@yourdomain.com"}
+            />
+          </Field>
+        </div>
+      </Section>
+
+      {message && (
+        <div
+          className={`rounded-lg px-4 py-3 text-sm ${
+            message.includes("sent") || message.includes("saved")
+              ? "border border-success/50 bg-success/10 text-success"
+              : "border border-destructive/50 bg-destructive/10 text-destructive"
+          }`}
+        >
+          {message}
+        </div>
+      )}
+
+      <div className="flex items-center gap-3">
+        <button
+          type="button"
+          onClick={save}
+          disabled={saving}
+          className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:opacity-90 disabled:opacity-50"
+        >
+          {saving ? "Saving..." : "Save Settings"}
+        </button>
+        <button
+          type="button"
+          onClick={sendTest}
+          disabled={testing || !smtpConfigured}
+          className="rounded-lg border border-border px-4 py-2 text-sm font-medium hover:bg-accent disabled:opacity-50"
+        >
+          {testing ? "Sending..." : "Send Test Email"}
+        </button>
+      </div>
     </div>
   );
 }

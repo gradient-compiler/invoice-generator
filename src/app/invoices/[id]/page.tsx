@@ -91,6 +91,20 @@ export default function InvoiceDetailPage() {
     new Date().toISOString().split("T")[0]
   );
   const [paymentMethod, setPaymentMethod] = useState("PayNow");
+  const [paymentAmount, setPaymentAmount] = useState(0);
+
+  // Payment history
+  const [payments, setPayments] = useState<
+    Array<{
+      id: number;
+      receiptNumber: string;
+      paymentDate: string;
+      paymentMethod: string | null;
+      amount: number;
+      notes: string | null;
+      createdAt: string;
+    }>
+  >([]);
 
   // Delete confirmation
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -128,6 +142,11 @@ export default function InvoiceDetailPage() {
         );
         setSettings(settingsData);
         setLoading(false);
+        // Fetch payment history
+        fetch(`/api/invoices/${invoiceId}/payments`)
+          .then((r) => r.json())
+          .then((p) => setPayments(Array.isArray(p) ? p : []))
+          .catch(() => {});
       })
       .catch((err) => {
         setError(err.message);
@@ -283,7 +302,8 @@ export default function InvoiceDetailPage() {
     }
   }
 
-  async function handleMarkPaid() {
+  async function handleRecordPayment() {
+    if (paymentAmount <= 0) return;
     setActionLoading("paid");
     try {
       const res = await fetch("/api/receipts", {
@@ -293,10 +313,10 @@ export default function InvoiceDetailPage() {
           invoiceId: invoice!.id,
           paymentDate,
           paymentMethod,
-          amount: invoice!.total,
+          amount: paymentAmount,
         }),
       });
-      if (!res.ok) throw new Error("Failed to mark as paid");
+      if (!res.ok) throw new Error("Failed to record payment");
       fetchInvoice();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong");
@@ -781,11 +801,11 @@ export default function InvoiceDetailPage() {
           <>
             <button
               type="button"
-              onClick={() => setShowPaymentDialog(true)}
+              onClick={() => { setPaymentAmount(Math.round((invoice.total - (invoice.amountPaid ?? 0)) * 100) / 100); setShowPaymentDialog(true); }}
               disabled={!!actionLoading}
               className="rounded-lg bg-success px-3 py-1.5 text-xs font-medium text-white hover:opacity-90 disabled:opacity-50"
             >
-              Mark as Paid
+              Record Payment
             </button>
             <button
               type="button"
@@ -802,11 +822,11 @@ export default function InvoiceDetailPage() {
           <>
             <button
               type="button"
-              onClick={() => setShowPaymentDialog(true)}
+              onClick={() => { setPaymentAmount(Math.round((invoice.total - (invoice.amountPaid ?? 0)) * 100) / 100); setShowPaymentDialog(true); }}
               disabled={!!actionLoading}
               className="rounded-lg bg-success px-3 py-1.5 text-xs font-medium text-white hover:opacity-90 disabled:opacity-50"
             >
-              Mark as Paid
+              Record Payment
             </button>
             <button
               type="button"
@@ -828,6 +848,60 @@ export default function InvoiceDetailPage() {
           </Link>
         )}
 
+        {(invoice.status === "draft" || invoice.status === "sent") && (
+          <button
+            type="button"
+            onClick={async () => {
+              setActionLoading("email");
+              try {
+                const res = await fetch("/api/email/send-invoice", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ invoiceId: invoice.id }),
+                });
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.error || "Failed to send");
+                setError("");
+              } catch (err) {
+                setError(err instanceof Error ? err.message : "Failed to send email");
+              } finally {
+                setActionLoading("");
+              }
+            }}
+            disabled={!!actionLoading}
+            className="rounded-lg border border-primary/50 px-3 py-1.5 text-xs font-medium text-primary hover:bg-primary/10 disabled:opacity-50"
+          >
+            {actionLoading === "email" ? "Sending..." : "Email Invoice"}
+          </button>
+        )}
+
+        {(invoice.status === "sent" || invoice.status === "overdue") && (
+          <button
+            type="button"
+            onClick={async () => {
+              setActionLoading("reminder");
+              try {
+                const res = await fetch("/api/email/send-reminder", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ invoiceId: invoice.id }),
+                });
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.error || "Failed to send");
+                setError("");
+              } catch (err) {
+                setError(err instanceof Error ? err.message : "Failed to send reminder");
+              } finally {
+                setActionLoading("");
+              }
+            }}
+            disabled={!!actionLoading}
+            className="rounded-lg border border-warning/50 px-3 py-1.5 text-xs font-medium text-warning hover:bg-warning/10 disabled:opacity-50"
+          >
+            {actionLoading === "reminder" ? "Sending..." : "Send Reminder"}
+          </button>
+        )}
+
         <button
           type="button"
           onClick={handleDuplicate}
@@ -847,11 +921,34 @@ export default function InvoiceDetailPage() {
         </button>
       </div>
 
+      {/* Partial Payment Indicator */}
+      {(invoice.amountPaid ?? 0) > 0 && invoice.status !== "paid" && (
+        <div className="rounded-lg border border-warning/50 bg-warning/10 px-4 py-3 text-sm">
+          <span className="font-medium text-warning">Partially Paid</span>
+          <span className="ml-2 text-muted-foreground">
+            {formatCurrency(invoice.amountPaid ?? 0, cur)} of {formatCurrency(invoice.total, cur)} received
+            &mdash; Balance due: <span className="font-semibold">{formatCurrency(invoice.total - (invoice.amountPaid ?? 0), cur)}</span>
+          </span>
+        </div>
+      )}
+
       {/* Payment Dialog */}
       {showPaymentDialog && (
         <div className="rounded-lg border border-border bg-card p-6">
           <h3 className="mb-4 text-sm font-semibold">Record Payment</h3>
-          <div className="grid gap-4 sm:grid-cols-2 max-w-md">
+          <div className="grid gap-4 sm:grid-cols-3 max-w-xl">
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium">Amount</label>
+              <input
+                type="number"
+                value={paymentAmount}
+                onChange={(e) => setPaymentAmount(parseFloat(e.target.value) || 0)}
+                className={inputClass}
+                step="0.01"
+                min="0.01"
+                max={invoice.total - (invoice.amountPaid ?? 0)}
+              />
+            </div>
             <div className="space-y-1.5">
               <label className="text-sm font-medium">Payment Date</label>
               <input
@@ -877,8 +974,8 @@ export default function InvoiceDetailPage() {
           <div className="mt-4 flex items-center gap-2">
             <button
               type="button"
-              onClick={handleMarkPaid}
-              disabled={!!actionLoading}
+              onClick={handleRecordPayment}
+              disabled={!!actionLoading || paymentAmount <= 0}
               className="rounded-lg bg-success px-4 py-2 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50"
             >
               {actionLoading === "paid" ? "Saving..." : "Confirm Payment"}
@@ -891,6 +988,35 @@ export default function InvoiceDetailPage() {
               Cancel
             </button>
           </div>
+        </div>
+      )}
+
+      {/* Payment History */}
+      {payments.length > 0 && (
+        <div className="rounded-lg border border-border bg-card">
+          <div className="border-b border-border px-4 py-3">
+            <h3 className="text-sm font-semibold">Payment History</h3>
+          </div>
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-border bg-muted/50">
+                <th className="px-4 py-2 text-left font-medium text-muted-foreground">Receipt #</th>
+                <th className="px-4 py-2 text-left font-medium text-muted-foreground">Date</th>
+                <th className="px-4 py-2 text-left font-medium text-muted-foreground">Method</th>
+                <th className="px-4 py-2 text-right font-medium text-muted-foreground">Amount</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-border">
+              {payments.map((p) => (
+                <tr key={p.id}>
+                  <td className="px-4 py-2">{p.receiptNumber}</td>
+                  <td className="px-4 py-2">{formatDate(p.paymentDate)}</td>
+                  <td className="px-4 py-2">{p.paymentMethod ?? "—"}</td>
+                  <td className="px-4 py-2 text-right font-medium tabular-nums">{formatCurrency(p.amount, cur)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       )}
 
@@ -918,6 +1044,55 @@ export default function InvoiceDetailPage() {
               Cancel
             </button>
           </div>
+        </div>
+      )}
+
+      {/* Share Link */}
+      {invoice.status !== "draft" && (
+        <div className="rounded-lg border border-border bg-card p-4">
+          <h3 className="mb-2 text-sm font-semibold">Client Portal Link</h3>
+          {(invoice as Record<string, unknown>).shareToken ? (
+            <div className="flex items-center gap-2">
+              <input
+                readOnly
+                value={`${window.location.origin}/portal/invoice/${(invoice as Record<string, unknown>).shareToken}`}
+                className="flex-1 rounded-md border border-border bg-muted px-3 py-2 text-sm font-mono"
+                onClick={(e) => (e.target as HTMLInputElement).select()}
+              />
+              <button
+                type="button"
+                onClick={() => {
+                  navigator.clipboard.writeText(
+                    `${window.location.origin}/portal/invoice/${(invoice as Record<string, unknown>).shareToken}`
+                  );
+                }}
+                className="rounded-lg border border-border px-3 py-2 text-sm font-medium hover:bg-accent"
+              >
+                Copy
+              </button>
+              <button
+                type="button"
+                onClick={async () => {
+                  await fetch(`/api/invoices/${invoiceId}/share`, { method: "DELETE" });
+                  fetchInvoice();
+                }}
+                className="rounded-lg border border-destructive/50 px-3 py-2 text-sm font-medium text-destructive hover:bg-destructive/10"
+              >
+                Revoke
+              </button>
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={async () => {
+                await fetch(`/api/invoices/${invoiceId}/share`, { method: "POST" });
+                fetchInvoice();
+              }}
+              className="rounded-lg border border-border px-3 py-2 text-sm font-medium hover:bg-accent"
+            >
+              Generate Share Link
+            </button>
+          )}
         </div>
       )}
 
@@ -1073,6 +1248,22 @@ export default function InvoiceDetailPage() {
               {formatCurrency(invoice.total, cur)}
             </span>
           </div>
+          {(invoice.amountPaid ?? 0) > 0 && (
+            <>
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-muted-foreground">Amount Paid</span>
+                <span className="font-medium tabular-nums text-success">
+                  -{formatCurrency(invoice.amountPaid ?? 0, cur)}
+                </span>
+              </div>
+              <div className="flex items-center justify-between text-base font-semibold">
+                <span>Balance Due</span>
+                <span className="tabular-nums">
+                  {formatCurrency(invoice.total - (invoice.amountPaid ?? 0), cur)}
+                </span>
+              </div>
+            </>
+          )}
         </div>
       </div>
 

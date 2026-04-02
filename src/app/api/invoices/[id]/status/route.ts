@@ -3,24 +3,31 @@ import { db } from "@/db";
 import { invoices } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { ensureDbInitialized } from "@/db/init";
+import { requireAuth } from "@/lib/auth";
+import { z } from "zod";
+
+const statusSchema = z.object({
+  status: z.enum(["draft", "sent", "paid", "overdue", "cancelled", "partially_paid"]),
+});
 
 export async function PATCH(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const authError = requireAuth(request);
+    if (authError) return authError;
     ensureDbInitialized();
     const { id } = await params;
     const body = await request.json();
-    const { status } = body;
-
-    const validStatuses = ["draft", "sent", "paid", "overdue", "cancelled"];
-    if (!status || !validStatuses.includes(status)) {
+    const parsed = statusSchema.safeParse(body);
+    if (!parsed.success) {
       return NextResponse.json(
-        { error: `Invalid status. Must be one of: ${validStatuses.join(", ")}` },
+        { error: parsed.error.issues.map((i) => i.message).join(", ") },
         { status: 400 }
       );
     }
+    const { status } = parsed.data;
 
     const existing = db
       .select()

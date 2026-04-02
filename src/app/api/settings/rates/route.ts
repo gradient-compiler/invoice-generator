@@ -3,9 +3,13 @@ import { db } from "@/db";
 import { rateTiers } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { ensureDbInitialized } from "@/db/init";
+import { requireAuth } from "@/lib/auth";
+import { rateTierSchema } from "@/lib/validators";
 
 export async function GET(request: Request) {
   try {
+    const authError = requireAuth(request);
+    if (authError) return authError;
     ensureDbInitialized();
 
     const { searchParams } = new URL(request.url);
@@ -34,17 +38,19 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
+    const authError = requireAuth(request);
+    if (authError) return authError;
     ensureDbInitialized();
 
     const body = await request.json();
-    const { name, rate, currency, rateType, description } = body;
-
-    if (!name || rate === undefined) {
+    const parsed = rateTierSchema.safeParse(body);
+    if (!parsed.success) {
       return NextResponse.json(
-        { error: "Name and rate are required" },
+        { error: parsed.error.issues.map((i) => i.message).join(", ") },
         { status: 400 }
       );
     }
+    const { name, rate, currency, rateType, description } = parsed.data;
 
     const result = db
       .insert(rateTiers)

@@ -24,6 +24,14 @@ export const businessSettings = sqliteTable("business_settings", {
   defaultTemplate: text("default_template").default("clean-professional"),
   defaultPaymentTerms: text("default_payment_terms").default("Due upon receipt"),
   latePaymentNote: text("late_payment_note"),
+  smtpHost: text("smtp_host"),
+  smtpPort: integer("smtp_port").default(587),
+  smtpUser: text("smtp_user"),
+  smtpPass: text("smtp_pass"),
+  smtpFromName: text("smtp_from_name"),
+  smtpFromEmail: text("smtp_from_email"),
+  smtpSecure: integer("smtp_secure", { mode: "boolean" }).default(false),
+  adminPasswordHash: text("admin_password_hash"),
   createdAt: text("created_at").default(sql`(datetime('now'))`),
   updatedAt: text("updated_at").default(sql`(datetime('now'))`),
 });
@@ -106,6 +114,8 @@ export const invoices = sqliteTable("invoices", {
   template: text("template").default("clean-professional"),
   billingMonth: text("billing_month"),
   duplicatedFrom: integer("duplicated_from"),
+  shareToken: text("share_token"),
+  shareTokenExpiresAt: text("share_token_expires_at"),
   createdAt: text("created_at").default(sql`(datetime('now'))`),
   updatedAt: text("updated_at").default(sql`(datetime('now'))`),
 });
@@ -163,4 +173,36 @@ export const invoiceTemplates = sqliteTable("invoice_templates", {
   description: text("description"),
   isBuiltin: integer("is_builtin", { mode: "boolean" }).default(true),
   configJson: text("config_json"),
+});
+
+export const recurringInvoices = sqliteTable("recurring_invoices", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  clientId: integer("client_id")
+    .notNull()
+    .references(() => clients.id),
+  frequency: text("frequency").notNull().default("monthly"),
+  lineItemsJson: text("line_items_json").notNull(),
+  currency: text("currency").default("SGD"),
+  discountType: text("discount_type"),
+  discountValue: real("discount_value").default(0),
+  discountLabel: text("discount_label"),
+  paymentTerms: text("payment_terms").default("Due upon receipt"),
+  template: text("template").default("clean-professional"),
+  notes: text("notes"),
+  nextGenerateDate: text("next_generate_date").notNull(),
+  lastGeneratedDate: text("last_generated_date"),
+  lastGeneratedInvoiceId: integer("last_generated_invoice_id"),
+  isActive: integer("is_active", { mode: "boolean" }).default(true),
+  createdAt: text("created_at").default(sql`(datetime('now'))`),
+  updatedAt: text("updated_at").default(sql`(datetime('now'))`),
+});
+
+export const auditLogs = sqliteTable("audit_logs", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  action: text("action").notNull(),
+  entityType: text("entity_type").notNull(),
+  entityId: text("entity_id"),
+  detail: text("detail"),
+  ipAddress: text("ip_address"),
+  createdAt: text("created_at").default(sql`(datetime('now'))`),
 });

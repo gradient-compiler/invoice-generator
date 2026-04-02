@@ -3,12 +3,15 @@ import { db } from "@/db";
 import { invoices, invoiceLineItems, businessSettings } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { ensureDbInitialized } from "@/db/init";
+import { requireAuth } from "@/lib/auth";
 
 export async function POST(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const authError = requireAuth(request);
+    if (authError) return authError;
     ensureDbInitialized();
     const { id } = await params;
     const originalId = parseInt(id);

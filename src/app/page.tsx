@@ -29,13 +29,19 @@ export default function DashboardPage() {
   >([]);
 
   useEffect(() => {
-    fetch("/api/dashboard")
-      .then((r) => r.json())
-      .then((data) => {
-        setStats(data.stats);
-        setRecentInvoices(data.recentInvoices || []);
-      })
-      .catch(() => {});
+    // Auto-mark overdue invoices and process recurring invoices before loading dashboard data
+    Promise.all([
+      fetch("/api/invoices/mark-overdue", { method: "POST" }).catch(() => {}),
+      fetch("/api/invoices/recurring/process", { method: "POST" }).catch(() => {}),
+    ]).finally(() => {
+        fetch("/api/dashboard")
+          .then((r) => r.json())
+          .then((data) => {
+            setStats(data.stats);
+            setRecentInvoices(data.recentInvoices || []);
+          })
+          .catch(() => {});
+      });
   }, []);
 
   const quickActions = [

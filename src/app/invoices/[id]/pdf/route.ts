@@ -10,6 +10,8 @@ import { eq } from "drizzle-orm";
 import { ensureDbInitialized } from "@/db/init";
 import { renderInvoicePDF } from "@/pdf/render-pdf";
 import { generatePayNowQR } from "@/lib/paynow-qr";
+import { safeDecrypt } from "@/lib/crypto";
+import { requireAuth } from "@/lib/auth";
 import type { InvoicePDFData } from "@/types";
 
 export async function GET(
@@ -18,6 +20,9 @@ export async function GET(
 ) {
   try {
     ensureDbInitialized();
+    const authError = requireAuth(request);
+    if (authError) return authError;
+
     const { id } = await params;
     const invoiceId = parseInt(id);
 
@@ -77,11 +82,12 @@ export async function GET(
       taxLabel = `GST (${invoice.taxRate}%)`;
     }
 
-    // Generate PayNow QR if configured
+    // Generate PayNow QR if configured — decrypt stored paynow number
     let paynowQrDataUri: string | undefined;
-    if (settings?.paynowNumber) {
+    const decryptedPaynow = safeDecrypt(settings?.paynowNumber);
+    if (decryptedPaynow) {
       try {
-        const pn = settings.paynowNumber.trim();
+        const pn = decryptedPaynow.trim();
         // Detect if the value looks like a phone number (starts with + or 6/8/9 digit)
         const isPhone = /^\+?\d[\d\s-]{7,}$/.test(pn);
         paynowQrDataUri = await generatePayNowQR({
@@ -104,7 +110,7 @@ export async function GET(
       logoPath: settings?.logoPath
         ? path.join(process.cwd(), "public", settings.logoPath)
         : undefined,
-      gstNumber: settings?.gstNumber || undefined,
+      gstNumber: safeDecrypt(settings?.gstNumber) || undefined,
 
       invoiceNumber: invoice.invoiceNumber,
       issueDate: invoice.issueDate,
@@ -136,8 +142,8 @@ export async function GET(
       paymentTerms: invoice.paymentTerms || "",
       lateFeeNote: invoice.lateFeeNote || undefined,
       bankName: settings?.bankName || undefined,
-      bankAccount: settings?.bankAccount || undefined,
-      bankHolder: settings?.bankHolder || undefined,
+      bankAccount: safeDecrypt(settings?.bankAccount) || undefined,
+      bankHolder: safeDecrypt(settings?.bankHolder) || undefined,
       paynowQrDataUri,
 
       notes: invoice.notes || undefined,

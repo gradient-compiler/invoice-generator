@@ -3,14 +3,37 @@ import { db } from "@/db";
 import { invoices, invoiceLineItems, clients, sessions } from "@/db/schema";
 import { eq, sql } from "drizzle-orm";
 import { ensureDbInitialized } from "@/db/init";
+import { requireAuth } from "@/lib/auth";
+import { invoiceSchema } from "@/lib/validators";
+import { parseId } from "@/lib/parse-id";
+
+const INVOICE_UPDATABLE_FIELDS = new Set([
+  "clientId", "status", "issueDate", "dueDate", "currency", "subtotal",
+  "discountAmount", "discountType", "discountValue", "discountLabel",
+  "taxRate", "taxAmount", "total", "amountPaid", "notes", "paymentTerms",
+  "lateFeeNote", "template", "billingMonth",
+]);
+
+function pickAllowed<T extends Record<string, unknown>>(obj: T, allowed: Set<string>): Partial<T> {
+  const result: Record<string, unknown> = {};
+  for (const key of Object.keys(obj)) {
+    if (allowed.has(key)) result[key] = obj[key];
+  }
+  return result as Partial<T>;
+}
 
 export async function GET(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const authError = requireAuth(request);
+    if (authError) return authError;
     ensureDbInitialized();
     const { id } = await params;
+    const result = parseId(id);
+    if ("error" in result) return result.error;
+    const numericId = result.id;
 
     const row = db
       .select({
@@ -41,12 +64,13 @@ export async function GET(
         template: invoices.template,
         billingMonth: invoices.billingMonth,
         duplicatedFrom: invoices.duplicatedFrom,
+        shareToken: invoices.shareToken,
         createdAt: invoices.createdAt,
         updatedAt: invoices.updatedAt,
       })
       .from(invoices)
       .leftJoin(clients, eq(invoices.clientId, clients.id))
-      .where(eq(invoices.id, parseInt(id)))
+      .where(eq(invoices.id, numericId))
       .get();
 
     if (!row) {
@@ -59,7 +83,7 @@ export async function GET(
     const lineItems = db
       .select()
       .from(invoiceLineItems)
-      .where(eq(invoiceLineItems.invoiceId, parseInt(id)))
+      .where(eq(invoiceLineItems.invoiceId, numericId))
       .orderBy(invoiceLineItems.sortOrder)
       .all();
 
@@ -90,9 +114,21 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const authError = requireAuth(request);
+    if (authError) return authError;
     ensureDbInitialized();
     const { id } = await params;
+    const parsed_id = parseId(id);
+    if ("error" in parsed_id) return parsed_id.error;
+    const numericId = parsed_id.id;
     const body = await request.json();
+    const parsed = invoiceSchema.partial().safeParse(body);
+    if (!parsed.success) {
+      return NextResponse.json(
+        { error: parsed.error.issues.map((i) => i.message).join(", ") },
+        { status: 400 }
+      );
+    }
 
     const existing = db
       .select()
@@ -107,7 +143,11 @@ export async function PUT(
       );
     }
 
-    const { lineItems, ...invoiceFields } = body;
+    const { lineItems, ...validatedFields } = parsed.data;
+    const invoiceFields: Record<string, unknown> = pickAllowed(
+      validatedFields as Record<string, unknown>,
+      INVOICE_UPDATABLE_FIELDS
+    );
 
     // Recalculate totals if line items are provided
     if (lineItems && Array.isArray(lineItems)) {
@@ -119,22 +159,14 @@ export async function PUT(
       // Insert new line items
       const items = lineItems.map(
         (
-          item: {
-            description: string;
-            quantity: number;
-            unitPrice: number;
-            unitLabel?: string;
-            amount?: number;
-            sortOrder?: number;
-            sessionId?: number;
-          },
+          item,
           index: number
         ) => ({
           description: item.description,
           quantity: item.quantity,
           unitPrice: item.unitPrice,
           unitLabel: item.unitLabel || "hr",
-          amount: item.amount ?? item.quantity * item.unitPrice,
+          amount: item.quantity * item.unitPrice,
           sortOrder: item.sortOrder ?? index,
           sessionId: item.sessionId || null,
         })
@@ -155,9 +187,9 @@ export async function PUT(
         0
       );
       const discountType =
-        invoiceFields.discountType ?? existing.discountType;
+        (validatedFields.discountType ?? existing.discountType) as string | null;
       const discountValue =
-        invoiceFields.discountValue ?? existing.discountValue ?? 0;
+        (validatedFields.discountValue ?? existing.discountValue ?? 0) as number;
 
       let discountAmount = 0;
       if (discountType === "percentage" && discountValue) {
@@ -167,7 +199,7 @@ export async function PUT(
       }
 
       const afterDiscount = subtotal - discountAmount;
-      const taxRate = invoiceFields.taxRate ?? existing.taxRate ?? 0;
+      const taxRate = (validatedFields.taxRate ?? existing.taxRate ?? 0) as number;
       const taxAmount = afterDiscount * (taxRate / 100);
       const total = afterDiscount + taxAmount;
 
@@ -214,6 +246,8 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const authError = requireAuth(request);
+    if (authError) return authError;
     ensureDbInitialized();
     const { id } = await params;
     const invoiceId = parseInt(id);
