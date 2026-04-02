@@ -3,6 +3,7 @@
 import { PageContainer } from "@/components/layout/page-container";
 import { PageHeader } from "@/components/layout/header";
 import Link from "next/link";
+import { Pencil } from "lucide-react";
 import { useEffect, useState } from "react";
 import type { Client, InvoiceWithItems, InvoiceStatus } from "@/types";
 
@@ -260,12 +261,19 @@ export default function InvoicesPage() {
                       <div className="flex items-center justify-end gap-2">
                         <Link
                           href={`/invoices/${inv.id}`}
+                          className="inline-flex items-center text-muted-foreground hover:text-primary"
+                          title="Edit invoice"
+                        >
+                          <Pencil className="h-3.5 w-3.5" />
+                        </Link>
+                        <Link
+                          href={`/invoices/${inv.id}`}
                           className="text-xs text-primary hover:underline"
                         >
                           View
                         </Link>
                         <a
-                          href={`/api/invoices/${inv.id}/pdf`}
+                          href={`/invoices/${inv.id}/pdf`}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="text-xs text-muted-foreground hover:text-foreground"

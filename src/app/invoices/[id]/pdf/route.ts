@@ -1,3 +1,4 @@
+import path from "path";
 import { db } from "@/db";
 import {
   invoices,
@@ -80,10 +81,14 @@ export async function GET(
     let paynowQrDataUri: string | undefined;
     if (settings?.paynowNumber) {
       try {
+        const pn = settings.paynowNumber.trim();
+        // Detect if the value looks like a phone number (starts with + or 6/8/9 digit)
+        const isPhone = /^\+?\d[\d\s-]{7,}$/.test(pn);
         paynowQrDataUri = await generatePayNowQR({
-          uen: settings.paynowNumber,
+          ...(isPhone ? { mobile: pn.replace(/[\s-]/g, "") } : { uen: pn }),
           amount: invoice.total,
           reference: invoice.invoiceNumber,
+          merchantName: settings?.businessName || undefined,
         });
       } catch {
         // QR generation is non-critical
@@ -96,7 +101,9 @@ export async function GET(
       businessAddress: settings?.address || "",
       businessPhone: settings?.phone || undefined,
       businessEmail: settings?.email || undefined,
-      logoPath: settings?.logoPath || undefined,
+      logoPath: settings?.logoPath
+        ? path.join(process.cwd(), "public", settings.logoPath)
+        : undefined,
       gstNumber: settings?.gstNumber || undefined,
 
       invoiceNumber: invoice.invoiceNumber,

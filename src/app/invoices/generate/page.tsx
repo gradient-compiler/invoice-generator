@@ -39,12 +39,14 @@ export default function GenerateInvoicesPage() {
     new Set()
   );
   const [grouping, setGrouping] = useState<"grouped" | "detailed">("grouped");
+  const [showSessionDates, setShowSessionDates] = useState(false);
 
   const [summaries, setSummaries] = useState<SessionSummary[]>([]);
   const [summaryLoading, setSummaryLoading] = useState(false);
 
   const [generating, setGenerating] = useState(false);
   const [generated, setGenerated] = useState<GeneratedInvoice[]>([]);
+  const [existingInvoices, setExistingInvoices] = useState<GeneratedInvoice[]>([]);
   const [showResults, setShowResults] = useState(false);
 
   // Fetch tuition clients
@@ -123,7 +125,8 @@ export default function GenerateInvoicesPage() {
         body: JSON.stringify({
           month,
           clientIds: Array.from(selectedClientIds),
-          grouping,
+          lineItemGrouping: grouping,
+          showSessionDates,
         }),
       });
 
@@ -136,6 +139,7 @@ export default function GenerateInvoicesPage() {
       setGenerated(
         Array.isArray(data) ? data : data.invoices ?? data.generated ?? []
       );
+      setExistingInvoices(data.existingInvoices ?? []);
       setShowResults(true);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong");
@@ -201,7 +205,41 @@ export default function GenerateInvoicesPage() {
         </div>
       )}
 
-      {showResults && generated.length === 0 && (
+      {showResults && generated.length === 0 && existingInvoices.length > 0 && (
+        <div className="rounded-lg border border-primary/30 bg-primary/5 p-6">
+          <h3 className="mb-3 text-sm font-semibold text-primary">
+            Invoices already exist for this month
+          </h3>
+          <ul className="space-y-2">
+            {existingInvoices.map((inv) => (
+              <li key={inv.id} className="flex items-center gap-3 text-sm">
+                <Link
+                  href={`/invoices/${inv.id}`}
+                  className="font-medium text-primary hover:underline"
+                >
+                  {inv.invoiceNumber}
+                </Link>
+                <span className="text-muted-foreground">
+                  {inv.clientName}
+                </span>
+                <span className="ml-auto font-medium tabular-nums">
+                  {formatCurrency(inv.total)}
+                </span>
+              </li>
+            ))}
+          </ul>
+          <div className="mt-4">
+            <Link
+              href="/invoices"
+              className="text-sm text-primary hover:underline"
+            >
+              View all invoices
+            </Link>
+          </div>
+        </div>
+      )}
+
+      {showResults && generated.length === 0 && existingInvoices.length === 0 && (
         <div className="rounded-lg border border-border bg-muted/30 p-6 text-center text-sm text-muted-foreground">
           No invoices were generated. There may be no unbilled sessions for the
           selected clients in this month.
@@ -253,6 +291,21 @@ export default function GenerateInvoicesPage() {
               </label>
             </div>
           </div>
+
+          {grouping === "grouped" && (
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium">Options</label>
+              <label className="flex items-center gap-2 pt-1 text-sm">
+                <input
+                  type="checkbox"
+                  checked={showSessionDates}
+                  onChange={(e) => setShowSessionDates(e.target.checked)}
+                  className="rounded"
+                />
+                Include session dates in description
+              </label>
+            </div>
+          )}
         </div>
       </div>
 

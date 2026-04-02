@@ -3,8 +3,28 @@
 import { PageContainer } from "@/components/layout/page-container";
 import { PageHeader } from "@/components/layout/header";
 import Link from "next/link";
+import { Pencil } from "lucide-react";
 import { useEffect, useState } from "react";
-import type { Client, SessionStatus, SessionWithClient } from "@/types";
+import type { Client, SessionStatus } from "@/types";
+
+// Matches the flat shape returned by the sessions API
+interface SessionRow {
+  id: number;
+  clientId: number;
+  clientName: string | null;
+  sessionDate: string;
+  durationHours: number;
+  rateTierId: number | null;
+  rateTierName: string | null;
+  rateTierRate: number | null;
+  rateOverride: number | null;
+  status: string;
+  missedClassHandling: string | null;
+  notes: string | null;
+  invoiceId: number | null;
+  creditNoteId: number | null;
+  createdAt: string;
+}
 
 function getCurrentMonth(): string {
   const now = new Date();
@@ -20,24 +40,24 @@ function formatDate(dateStr: string): string {
   });
 }
 
-function computeAmount(session: SessionWithClient): number {
+function computeAmount(session: SessionRow): number {
   if (session.rateOverride != null) {
     return session.durationHours * session.rateOverride;
   }
-  if (session.rateTier) {
-    return session.durationHours * session.rateTier.rate;
+  if (session.rateTierRate != null) {
+    return session.durationHours * session.rateTierRate;
   }
   return 0;
 }
 
-function getRate(session: SessionWithClient): number {
+function getRate(session: SessionRow): number {
   if (session.rateOverride != null) return session.rateOverride;
-  if (session.rateTier) return session.rateTier.rate;
+  if (session.rateTierRate != null) return session.rateTierRate;
   return 0;
 }
 
 export default function SessionsPage() {
-  const [sessions, setSessions] = useState<SessionWithClient[]>([]);
+  const [sessions, setSessions] = useState<SessionRow[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -209,6 +229,9 @@ export default function SessionsPage() {
                   <th className="px-4 py-3 text-left font-medium text-muted-foreground">
                     Status
                   </th>
+                  <th className="px-4 py-3 text-right font-medium text-muted-foreground w-16">
+                    Actions
+                  </th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
@@ -236,19 +259,31 @@ export default function SessionsPage() {
                         </Link>
                       </td>
                       <td className="px-4 py-3 font-medium">
-                        {session.client?.name ?? `Client #${session.clientId}`}
+                        {session.clientName ?? `Client #${session.clientId}`}
                       </td>
                       <td className="hidden px-4 py-3 text-right sm:table-cell">
                         {session.durationHours}
                       </td>
                       <td className="hidden px-4 py-3 text-right text-muted-foreground md:table-cell">
                         ${getRate(session).toFixed(2)}
+                        {session.rateTierName && (
+                          <span className="ml-1 text-xs">({session.rateTierName})</span>
+                        )}
                       </td>
                       <td className="px-4 py-3 text-right font-medium">
                         ${computeAmount(session).toFixed(2)}
                       </td>
                       <td className="px-4 py-3">
                         <SessionStatusBadge status={session.status || "completed"} />
+                      </td>
+                      <td className="px-4 py-3 text-right">
+                        <Link
+                          href={`/sessions/${session.id}`}
+                          className="inline-flex items-center text-muted-foreground hover:text-primary"
+                          title="Edit session"
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </Link>
                       </td>
                     </tr>
                   );

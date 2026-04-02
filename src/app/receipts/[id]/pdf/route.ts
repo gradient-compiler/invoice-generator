@@ -1,3 +1,4 @@
+import path from "path";
 import { db } from "@/db";
 import { receipts, invoices, clients, businessSettings } from "@/db/schema";
 import { eq } from "drizzle-orm";
@@ -52,7 +53,9 @@ export async function GET(
       businessAddress: settings?.address || "",
       businessPhone: settings?.phone || undefined,
       businessEmail: settings?.email || undefined,
-      logoPath: settings?.logoPath || undefined,
+      logoPath: settings?.logoPath
+        ? path.join(process.cwd(), "public", settings.logoPath)
+        : undefined,
 
       receiptNumber: receipt.receiptNumber,
       invoiceNumber: receipt.invoiceNumber || "",

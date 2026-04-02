@@ -9,11 +9,13 @@ import {
   Users,
   Calendar,
   Receipt,
+  BarChart3,
   Settings,
   ChevronLeft,
   ChevronRight,
 } from "lucide-react";
 import { useState } from "react";
+import { ThemeToggle } from "@/components/theme-toggle";
 
 const navItems = [
   { href: "/", label: "Dashboard", icon: LayoutDashboard },
@@ -21,6 +23,7 @@ const navItems = [
   { href: "/clients", label: "Clients", icon: Users },
   { href: "/sessions", label: "Sessions", icon: Calendar },
   { href: "/receipts", label: "Receipts", icon: Receipt },
+  { href: "/analytics", label: "Analytics", icon: BarChart3 },
   { href: "/settings", label: "Settings", icon: Settings },
 ];
 
@@ -73,11 +76,14 @@ export function Sidebar() {
           );
         })}
       </nav>
-      {!collapsed && (
-        <div className="border-t border-border p-4 text-xs text-muted-foreground">
-          Invoice Generator v1.0
-        </div>
-      )}
+      <div className="border-t border-border p-3">
+        <ThemeToggle collapsed={collapsed} />
+        {!collapsed && (
+          <p className="mt-2 text-center text-xs text-muted-foreground">
+            Invoice Generator v1.0
+          </p>
+        )}
+      </div>
     </aside>
   );
 }

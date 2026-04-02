@@ -4,10 +4,24 @@ import { PageContainer } from "@/components/layout/page-container";
 import { PageHeader } from "@/components/layout/header";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, useCallback } from "react";
-import type { Client, BusinessSettings, DiscountType } from "@/types";
+import type { Client, BusinessSettings, DiscountType, RateTier } from "@/types";
 
 const inputClass =
   "w-full rounded-md border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring";
+
+interface SessionRow {
+  id: number;
+  clientId: number;
+  clientName: string | null;
+  sessionDate: string;
+  durationHours: number;
+  rateTierId: number | null;
+  rateTierName: string | null;
+  rateTierRate: number | null;
+  rateOverride: number | null;
+  status: string;
+  invoiceId: number | null;
+}
 
 interface LineItem {
   key: string;
@@ -40,6 +54,8 @@ export default function NewInvoicePage() {
 
   const [clients, setClients] = useState<Client[]>([]);
   const [settings, setSettings] = useState<BusinessSettings | null>(null);
+  const [rateTiers, setRateTiers] = useState<RateTier[]>([]);
+  const [uninvoicedSessions, setUninvoicedSessions] = useState<SessionRow[]>([]);
   const [loadingData, setLoadingData] = useState(true);
 
   // Form fields
@@ -66,12 +82,14 @@ export default function NewInvoicePage() {
     Promise.all([
       fetch("/api/clients?active=true").then((r) => r.json()),
       fetch("/api/settings").then((r) => r.json()),
+      fetch("/api/settings/rates?active=true").then((r) => r.json()),
     ])
-      .then(([clientData, settingsData]) => {
+      .then(([clientData, settingsData, ratesData]) => {
         setClients(
           Array.isArray(clientData) ? clientData : clientData.clients ?? []
         );
         setSettings(settingsData);
+        setRateTiers(Array.isArray(ratesData) ? ratesData : []);
         if (settingsData?.defaultCurrency) setCurrency(settingsData.defaultCurrency);
         if (settingsData?.defaultTemplate) setTemplate(settingsData.defaultTemplate);
         if (settingsData?.defaultPaymentTerms) setPaymentTerms(settingsData.defaultPaymentTerms);
@@ -80,14 +98,23 @@ export default function NewInvoicePage() {
       .catch(() => setLoadingData(false));
   }, []);
 
-  // Auto-fill client details
+  // Auto-fill client details and fetch uninvoiced sessions
   useEffect(() => {
     if (clientId === "") {
       setSelectedClient(null);
+      setUninvoicedSessions([]);
       return;
     }
     const c = clients.find((cl) => cl.id === clientId) ?? null;
     setSelectedClient(c);
+
+    // Fetch uninvoiced sessions for this client
+    fetch(`/api/sessions?clientId=${clientId}&invoiced=false&status=completed`)
+      .then((r) => r.json())
+      .then((data) => {
+        setUninvoicedSessions(Array.isArray(data) ? data : []);
+      })
+      .catch(() => setUninvoicedSessions([]));
   }, [clientId, clients]);
 
   // Recalc line item amounts
@@ -109,6 +136,54 @@ export default function NewInvoicePage() {
   const addLineItem = () => setLineItems((prev) => [...prev, newLineItem()]);
   const removeLineItem = (key: string) =>
     setLineItems((prev) => (prev.length <= 1 ? prev : prev.filter((i) => i.key !== key)));
+
+  // Build suggested line items from uninvoiced sessions grouped by rate
+  const sessionSuggestions = (() => {
+    if (uninvoicedSessions.length === 0) return [];
+    const groups = new Map<string, { tierName: string; rate: number; durations: number[] }>();
+    for (const s of uninvoicedSessions) {
+      const rate = s.rateOverride ?? s.rateTierRate ?? 0;
+      const tierName = s.rateTierName || "Custom";
+      const key = `${tierName}-${rate}`;
+      if (!groups.has(key)) groups.set(key, { tierName, rate, durations: [] });
+      groups.get(key)!.durations.push(s.durationHours);
+    }
+    return Array.from(groups.values()).map((g) => {
+      const totalHours = g.durations.reduce((a, b) => a + b, 0);
+      const count = g.durations.length;
+      const allSame = g.durations.every((d) => d === g.durations[0]);
+      const durationDesc = allSame
+        ? `${count} session${count !== 1 ? "s" : ""} x ${g.durations[0]} hrs`
+        : `${count} session${count !== 1 ? "s" : ""} (${g.durations.map((d) => `${d} hrs`).join(", ")})`;
+      return {
+        description: `English Tuition (${g.tierName}) - ${durationDesc}, ${totalHours} hrs total`,
+        quantity: totalHours,
+        unitPrice: g.rate,
+        tierName: g.tierName,
+      };
+    });
+  })();
+
+  function applySuggestion(suggestion: { description: string; quantity: number; unitPrice: number }) {
+    const item: LineItem = {
+      key: crypto.randomUUID(),
+      description: suggestion.description,
+      quantity: suggestion.quantity,
+      unitPrice: suggestion.unitPrice,
+      unitLabel: "hr",
+      amount: Math.round(suggestion.quantity * suggestion.unitPrice * 100) / 100,
+    };
+    setLineItems((prev) => {
+      // Replace the first empty line item, or append
+      const firstEmpty = prev.findIndex((li) => !li.description.trim() && li.quantity <= 1 && li.unitPrice === 0);
+      if (firstEmpty >= 0) {
+        const next = [...prev];
+        next[firstEmpty] = item;
+        return next;
+      }
+      return [...prev, item];
+    });
+  }
 
   // Calculations
   const subtotal = lineItems.reduce((s, i) => s + i.amount, 0);
@@ -265,6 +340,9 @@ export default function NewInvoicePage() {
                 <option value="clean-professional">Clean Professional</option>
                 <option value="classic">Classic</option>
                 <option value="modern-minimal">Modern Minimal</option>
+                <option value="corporate">Corporate</option>
+                <option value="creative">Creative</option>
+                <option value="compact-detailed">Compact + Receipt</option>
               </select>
             </div>
 
@@ -319,6 +397,60 @@ export default function NewInvoicePage() {
           <h2 className="mb-4 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
             Line Items
           </h2>
+
+          {/* Suggestions from uninvoiced sessions */}
+          {clientId && sessionSuggestions.length > 0 && (
+            <div className="mb-4 rounded-md border border-primary/20 bg-primary/5 p-3">
+              <p className="mb-2 text-xs font-medium text-muted-foreground">
+                Suggested from {uninvoicedSessions.length} uninvoiced session{uninvoicedSessions.length !== 1 ? "s" : ""}:
+              </p>
+              <div className="space-y-1.5">
+                {sessionSuggestions.map((s, i) => (
+                  <div key={i} className="flex items-center justify-between gap-2 text-sm">
+                    <div className="min-w-0 flex-1">
+                      <span className="font-medium">{s.tierName}</span>
+                      <span className="text-muted-foreground"> - {s.quantity} hrs @ ${s.unitPrice.toFixed(2)}/hr = </span>
+                      <span className="font-medium">${(s.quantity * s.unitPrice).toFixed(2)}</span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => applySuggestion(s)}
+                      className="shrink-0 rounded-md bg-primary px-2.5 py-1 text-xs font-medium text-primary-foreground hover:opacity-90"
+                    >
+                      Add
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Rate tier quick-add */}
+          {clientId && rateTiers.length > 0 && sessionSuggestions.length === 0 && (
+            <div className="mb-4 rounded-md border border-border bg-muted/30 p-3">
+              <p className="mb-2 text-xs font-medium text-muted-foreground">
+                Quick add from rate tiers:
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {rateTiers.map((tier) => (
+                  <button
+                    key={tier.id}
+                    type="button"
+                    onClick={() =>
+                      applySuggestion({
+                        description: `English Tuition (${tier.name})`,
+                        quantity: 1,
+                        unitPrice: tier.rate,
+                      })
+                    }
+                    className="rounded-md border border-border px-2.5 py-1 text-xs hover:border-primary hover:text-primary"
+                  >
+                    {tier.name} - ${tier.rate.toFixed(2)}/{tier.rateType === "hourly" ? "hr" : "session"}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
 
           <div className="overflow-x-auto">
             <table className="w-full text-sm">

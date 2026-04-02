@@ -198,14 +198,18 @@ export function ensureDbInitialized() {
     }
   }
 
-  const templates = db.select().from(invoiceTemplates).all();
-  if (templates.length === 0) {
-    const builtinTemplates = [
-      { slug: "clean-professional", name: "Clean Professional", description: "Modern minimalist design with generous whitespace and a deep blue accent" },
-      { slug: "classic", name: "Classic", description: "Traditional bordered layout with centered header and dark accents" },
-      { slug: "modern-minimal", name: "Modern Minimal", description: "Ultra-clean design with no borders, bold invoice number, and subtle separators" },
-    ];
-    for (const tpl of builtinTemplates) {
+  const builtinTemplates = [
+    { slug: "clean-professional", name: "Clean Professional", description: "Modern minimalist design with generous whitespace and a deep blue accent" },
+    { slug: "classic", name: "Classic", description: "Traditional bordered layout with centered header and dark accents" },
+    { slug: "modern-minimal", name: "Modern Minimal", description: "Ultra-clean design with no borders, bold invoice number, and subtle separators" },
+    { slug: "corporate", name: "Corporate", description: "Formal layout with gray header band, structured grid, and professional sans-serif typography" },
+    { slug: "creative", name: "Creative", description: "Colorful accent stripe with sidebar element, bold invoice number, and modern layout" },
+    { slug: "compact-detailed", name: "Compact + Receipt", description: "Space-efficient layout with a tear-off payment slip section at the bottom" },
+  ];
+  const existingTemplates = db.select().from(invoiceTemplates).all();
+  const existingSlugs = new Set(existingTemplates.map((t) => t.slug));
+  for (const tpl of builtinTemplates) {
+    if (!existingSlugs.has(tpl.slug)) {
       db.insert(invoiceTemplates).values({ ...tpl, isBuiltin: true }).run();
     }
   }

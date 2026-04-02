@@ -12,12 +12,13 @@ export async function GET(
     ensureDbInitialized();
     const { id } = await params;
 
-    const invoice = db
+    const row = db
       .select({
         id: invoices.id,
         invoiceNumber: invoices.invoiceNumber,
         clientId: invoices.clientId,
         clientName: clients.name,
+        clientParentName: clients.parentName,
         clientEmail: clients.email,
         clientPhone: clients.phone,
         clientAddress: clients.address,
@@ -48,7 +49,7 @@ export async function GET(
       .where(eq(invoices.id, parseInt(id)))
       .get();
 
-    if (!invoice) {
+    if (!row) {
       return NextResponse.json(
         { error: "Invoice not found" },
         { status: 404 }
@@ -62,7 +63,19 @@ export async function GET(
       .orderBy(invoiceLineItems.sortOrder)
       .all();
 
-    return NextResponse.json({ ...invoice, lineItems });
+    const { clientName, clientParentName, clientEmail, clientPhone, clientAddress, ...invoice } = row;
+    return NextResponse.json({
+      ...invoice,
+      client: {
+        id: row.clientId,
+        name: clientName,
+        parentName: clientParentName,
+        email: clientEmail,
+        phone: clientPhone,
+        address: clientAddress,
+      },
+      lineItems,
+    });
   } catch (error) {
     console.error("Get invoice error:", error);
     return NextResponse.json(
@@ -162,6 +175,11 @@ export async function PUT(
       invoiceFields.discountAmount = discountAmount;
       invoiceFields.taxAmount = taxAmount;
       invoiceFields.total = total;
+    }
+
+    // When marking as paid, ensure amountPaid is set
+    if (invoiceFields.status === "paid" && !invoiceFields.amountPaid) {
+      invoiceFields.amountPaid = invoiceFields.total ?? existing.total;
     }
 
     const result = db

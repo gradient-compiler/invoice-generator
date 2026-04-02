@@ -17,7 +17,7 @@ export async function POST(request: Request) {
     ensureDbInitialized();
 
     const body = await request.json();
-    const { month, clientIds, lineItemGrouping = "grouped" } = body;
+    const { month, clientIds, lineItemGrouping = "grouped", showSessionDates = false } = body;
 
     if (!month) {
       return NextResponse.json(
@@ -75,8 +75,38 @@ export async function POST(request: Request) {
       .all();
 
     if (matchingSessions.length === 0) {
+      // Look up existing invoices for the requested clients + month
+      const existingConditions = [
+        sql`${invoices.billingMonth} = ${month}`,
+      ];
+      if (clientIds && clientIds.length > 0) {
+        existingConditions.push(
+          sql`${invoices.clientId} IN (${sql.join(
+            clientIds.map((cid: number) => sql`${cid}`),
+            sql`, `
+          )})`
+        );
+      }
+      const existingInvoices = db
+        .select({
+          id: invoices.id,
+          invoiceNumber: invoices.invoiceNumber,
+          clientId: invoices.clientId,
+          clientName: clients.name,
+          total: invoices.total,
+          status: invoices.status,
+        })
+        .from(invoices)
+        .leftJoin(clients, eq(invoices.clientId, clients.id))
+        .where(and(...existingConditions))
+        .all();
+
       return NextResponse.json(
-        { message: "No uninvoiced sessions found for the given month", invoices: [] },
+        {
+          message: "No uninvoiced sessions found for the given month",
+          invoices: [],
+          existingInvoices,
+        },
         { status: 200 }
       );
     }
@@ -155,6 +185,8 @@ export async function POST(request: Request) {
             rate: number;
             totalHours: number;
             sessionCount: number;
+            durations: number[];
+            dates: string[];
             sessionIds: number[];
           }
         >();
@@ -169,10 +201,14 @@ export async function POST(request: Request) {
             rate,
             totalHours: 0,
             sessionCount: 0,
+            durations: [] as number[],
+            dates: [] as string[],
             sessionIds: [],
           };
           group.totalHours += session.durationHours;
           group.sessionCount += 1;
+          group.durations.push(session.durationHours);
+          group.dates.push(session.sessionDate);
           group.sessionIds.push(session.id);
           groupedByTier.set(tierKey, group);
         }
@@ -180,8 +216,25 @@ export async function POST(request: Request) {
         let sortOrder = 0;
         for (const [, group] of groupedByTier) {
           const amount = group.totalHours * group.rate;
+          const allSame = group.durations.every((d: number) => d === group.durations[0]);
+          const sessionWord = group.sessionCount === 1 ? "session" : "sessions";
+
+          let durationDesc: string;
+          if (showSessionDates) {
+            const details = group.dates.map((date, i) => {
+              const d = new Date(date + "T00:00:00");
+              const label = d.toLocaleDateString("en-SG", { day: "numeric", month: "short" });
+              return `${label}: ${group.durations[i]} hrs`;
+            });
+            durationDesc = `${group.sessionCount} ${sessionWord} (${details.join(", ")}), ${group.totalHours} hrs total`;
+          } else if (allSame) {
+            durationDesc = `${group.sessionCount} ${sessionWord} x ${group.durations[0]} hrs`;
+          } else {
+            durationDesc = `${group.sessionCount} ${sessionWord} (${group.durations.map((d: number) => `${d} hrs`).join(", ")}), ${group.totalHours} hrs total`;
+          }
+
           lineItemsToInsert.push({
-            description: `${group.sessionCount} sessions x ${group.totalHours} hrs @ $${group.rate}/hr (${group.tierName})`,
+            description: `${group.tierName} - ${durationDesc} @ $${group.rate}/hr`,
             quantity: group.totalHours,
             unitPrice: group.rate,
             unitLabel: "hr",

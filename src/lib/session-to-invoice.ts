@@ -16,6 +16,7 @@ interface GenerateMonthlyParams {
   month: string; // "YYYY-MM"
   clientIds?: number[];
   lineItemGrouping?: "grouped" | "detailed";
+  showSessionDates?: boolean;
 }
 
 interface GeneratedInvoice {
@@ -30,7 +31,7 @@ interface GeneratedInvoice {
 export async function generateMonthlyInvoices(
   params: GenerateMonthlyParams
 ): Promise<GeneratedInvoice[]> {
-  const { month, clientIds, lineItemGrouping = "grouped" } = params;
+  const { month, clientIds, lineItemGrouping = "grouped", showSessionDates = false } = params;
 
   // Get business settings
   const settings = db
@@ -126,6 +127,8 @@ export async function generateMonthlyInvoices(
           rate: number;
           totalHours: number;
           sessionCount: number;
+          durations: number[];
+          dates: string[];
           sessionIds: number[];
         }
       >();
@@ -142,6 +145,8 @@ export async function generateMonthlyInvoices(
             rate,
             totalHours: 0,
             sessionCount: 0,
+            durations: [],
+            dates: [],
             sessionIds: [],
           });
         }
@@ -149,12 +154,31 @@ export async function generateMonthlyInvoices(
         const group = rateGroups.get(key)!;
         group.totalHours += row.session.durationHours;
         group.sessionCount += 1;
+        group.durations.push(row.session.durationHours);
+        group.dates.push(row.session.sessionDate);
         group.sessionIds.push(row.session.id);
       }
 
       for (const [, group] of rateGroups) {
+        const allSame = group.durations.every((d) => d === group.durations[0]);
+        const sessionWord = group.sessionCount === 1 ? "session" : "sessions";
+
+        let durationDesc: string;
+        if (showSessionDates) {
+          const details = group.dates.map((date, i) => {
+            const d = new Date(date + "T00:00:00");
+            const label = d.toLocaleDateString("en-SG", { day: "numeric", month: "short" });
+            return `${label}: ${group.durations[i]} hrs`;
+          });
+          durationDesc = `${group.sessionCount} ${sessionWord} (${details.join(", ")}), ${group.totalHours} hrs total`;
+        } else if (allSame) {
+          durationDesc = `${group.sessionCount} ${sessionWord} x ${group.durations[0]} hrs`;
+        } else {
+          durationDesc = `${group.sessionCount} ${sessionWord} (${group.durations.map((d) => `${d} hrs`).join(", ")}), ${group.totalHours} hrs total`;
+        }
+
         lineItems.push({
-          description: `English Tuition (${group.tierName}) - ${group.sessionCount} sessions x ${(group.totalHours / group.sessionCount).toFixed(1)} hrs`,
+          description: `English Tuition (${group.tierName}) - ${durationDesc}`,
           quantity: group.totalHours,
           unitPrice: group.rate,
           unitLabel: "hr",

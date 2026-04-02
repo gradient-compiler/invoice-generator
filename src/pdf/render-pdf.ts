@@ -3,6 +3,9 @@ import type { InvoicePDFData } from "@/types";
 import { CleanProfessionalTemplate } from "./templates/clean-professional";
 import { ClassicTemplate } from "./templates/classic";
 import { ModernMinimalTemplate } from "./templates/modern-minimal";
+import { CorporateTemplate } from "./templates/corporate";
+import { CreativeTemplate } from "./templates/creative";
+import { CompactDetailedTemplate } from "./templates/compact-detailed";
 import React from "react";
 
 const TEMPLATES: Record<
@@ -12,6 +15,9 @@ const TEMPLATES: Record<
   "clean-professional": CleanProfessionalTemplate,
   classic: ClassicTemplate,
   "modern-minimal": ModernMinimalTemplate,
+  corporate: CorporateTemplate,
+  creative: CreativeTemplate,
+  "compact-detailed": CompactDetailedTemplate,
 };
 
 export async function renderInvoicePDF(

@@ -3,6 +3,7 @@
 import { PageContainer } from "@/components/layout/page-container";
 import { PageHeader } from "@/components/layout/header";
 import Link from "next/link";
+import { Pencil } from "lucide-react";
 import { useEffect, useState } from "react";
 import type { Client, ClientType } from "@/types";
 
@@ -144,6 +145,9 @@ export default function ClientsPage() {
                   <th className="px-4 py-3 text-left font-medium text-muted-foreground">
                     Status
                   </th>
+                  <th className="px-4 py-3 text-right font-medium text-muted-foreground w-16">
+                    Actions
+                  </th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
@@ -184,6 +188,15 @@ export default function ClientsPage() {
                       >
                         {client.isActive ? "Active" : "Inactive"}
                       </span>
+                    </td>
+                    <td className="px-4 py-3 text-right">
+                      <Link
+                        href={`/clients/${client.id}`}
+                        className="inline-flex items-center text-muted-foreground hover:text-primary"
+                        title="Edit client"
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </Link>
                     </td>
                   </tr>
                 ))}

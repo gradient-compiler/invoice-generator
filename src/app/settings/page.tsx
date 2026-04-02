@@ -2,10 +2,19 @@
 
 import { PageContainer } from "@/components/layout/page-container";
 import { PageHeader } from "@/components/layout/header";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
+import { useTheme } from "next-themes";
 import type { BusinessSettings, RateTier, Term } from "@/types";
+import {
+  CleanProfessionalPreview,
+  ClassicPreview,
+  ModernMinimalPreview,
+  CorporatePreview,
+  CreativePreview,
+  CompactDetailedPreview,
+} from "@/components/template-previews";
 
-type Tab = "business" | "rates" | "terms" | "templates";
+type Tab = "business" | "rates" | "terms" | "templates" | "appearance";
 
 export default function SettingsPage() {
   const [activeTab, setActiveTab] = useState<Tab>("business");
@@ -15,6 +24,7 @@ export default function SettingsPage() {
     { id: "rates", label: "Rate Tiers" },
     { id: "terms", label: "Terms" },
     { id: "templates", label: "Templates" },
+    { id: "appearance", label: "Appearance" },
   ];
 
   return (
@@ -45,6 +55,7 @@ export default function SettingsPage() {
         {activeTab === "rates" && <RateTiersTab />}
         {activeTab === "terms" && <TermsTab />}
         {activeTab === "templates" && <TemplatesTab />}
+        {activeTab === "appearance" && <AppearanceTab />}
       </div>
     </PageContainer>
   );
@@ -54,6 +65,7 @@ function BusinessInfoTab() {
   const [settings, setSettings] = useState<Partial<BusinessSettings>>({});
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
+  const [logoUploading, setLogoUploading] = useState(false);
 
   useEffect(() => {
     fetch("/api/settings")
@@ -123,6 +135,72 @@ function BusinessInfoTab() {
             />
           </Field>
         </div>
+      </Section>
+
+      <Section title="Business Logo">
+        <p className="text-sm text-muted-foreground">
+          Upload your business logo to display on invoices and receipts. Max 2MB, PNG/JPG/SVG/WebP.
+        </p>
+        {settings.logoPath && (
+          <div className="flex items-center gap-4 mt-2">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={settings.logoPath}
+              alt="Business logo"
+              className="h-16 w-16 rounded border border-border object-contain bg-white"
+            />
+            <button
+              type="button"
+              onClick={async () => {
+                setLogoUploading(true);
+                try {
+                  const res = await fetch("/api/settings/logo", { method: "DELETE" });
+                  if (res.ok) {
+                    setSettings((prev) => ({ ...prev, logoPath: undefined }));
+                    setMessage("Logo removed");
+                  }
+                } catch { /* ignore */ }
+                setLogoUploading(false);
+              }}
+              disabled={logoUploading}
+              className="text-sm text-destructive hover:underline disabled:opacity-50"
+            >
+              Remove logo
+            </button>
+          </div>
+        )}
+        <input
+          type="file"
+          accept="image/png,image/jpeg,image/svg+xml,image/webp"
+          onChange={async (e) => {
+            const file = e.target.files?.[0];
+            if (!file) return;
+            setLogoUploading(true);
+            setMessage("");
+            try {
+              const fd = new FormData();
+              fd.append("logo", file);
+              const res = await fetch("/api/settings/logo", {
+                method: "POST",
+                body: fd,
+              });
+              if (res.ok) {
+                const data = await res.json();
+                setSettings((prev) => ({ ...prev, logoPath: data.logoPath }));
+                setMessage("Logo uploaded successfully!");
+              } else {
+                const data = await res.json().catch(() => ({}));
+                setMessage(data.error || "Failed to upload logo");
+              }
+            } catch {
+              setMessage("Error uploading logo");
+            }
+            setLogoUploading(false);
+            e.target.value = "";
+          }}
+          disabled={logoUploading}
+          className="input-field cursor-pointer file:mr-3 file:rounded file:border-0 file:bg-primary/10 file:px-3 file:py-1 file:text-xs file:font-medium file:text-primary"
+        />
       </Section>
 
       <Section title="Payment Details">
@@ -727,6 +805,24 @@ function TemplatesTab() {
         description:
           "Ultra-clean design with no borders, bold invoice number, and subtle separators",
       },
+      {
+        slug: "corporate",
+        name: "Corporate",
+        description:
+          "Formal layout with gray header band, structured grid, and professional sans-serif typography",
+      },
+      {
+        slug: "creative",
+        name: "Creative",
+        description:
+          "Colorful accent stripe with sidebar element, bold invoice number, and modern layout",
+      },
+      {
+        slug: "compact-detailed",
+        name: "Compact + Receipt",
+        description:
+          "Space-efficient layout with a tear-off payment slip section at the bottom",
+      },
     ]);
   }, []);
 
@@ -755,9 +851,12 @@ function TemplatesTab() {
             }`}
             onClick={() => selectTemplate(tpl.slug)}
           >
-            <div className="mb-3 aspect-[210/297] rounded bg-muted flex items-center justify-center text-muted-foreground text-xs">
-              Preview
-            </div>
+            {tpl.slug === "clean-professional" && <CleanProfessionalPreview />}
+            {tpl.slug === "classic" && <ClassicPreview />}
+            {tpl.slug === "modern-minimal" && <ModernMinimalPreview />}
+            {tpl.slug === "corporate" && <CorporatePreview />}
+            {tpl.slug === "creative" && <CreativePreview />}
+            {tpl.slug === "compact-detailed" && <CompactDetailedPreview />}
             <h3 className="font-medium">{tpl.name}</h3>
             <p className="mt-1 text-xs text-muted-foreground">
               {tpl.description}
@@ -770,6 +869,67 @@ function TemplatesTab() {
           </div>
         ))}
       </div>
+    </div>
+  );
+}
+
+function AppearanceTab() {
+  const { theme, setTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => setMounted(true), []);
+
+  if (!mounted) return null;
+
+  const themes = [
+    {
+      value: "light",
+      label: "Light",
+      description: "Classic light background with dark text",
+    },
+    {
+      value: "dark",
+      label: "Dark",
+      description: "Dark background with light text, easier on the eyes at night",
+    },
+    {
+      value: "system",
+      label: "System",
+      description: "Automatically matches your operating system preference",
+    },
+  ] as const;
+
+  return (
+    <div className="space-y-6">
+      <Section title="Theme">
+        <p className="text-sm text-muted-foreground">
+          Choose how the application looks. Select a theme or let it follow your
+          system settings.
+        </p>
+        <div className="grid gap-3 sm:grid-cols-3 mt-3">
+          {themes.map((t) => (
+            <button
+              key={t.value}
+              onClick={() => setTheme(t.value)}
+              className={`rounded-lg border p-4 text-left transition-colors ${
+                theme === t.value
+                  ? "border-primary bg-primary/5"
+                  : "border-border hover:bg-accent/50"
+              }`}
+            >
+              <div className="font-medium text-sm">{t.label}</div>
+              <div className="mt-1 text-xs text-muted-foreground">
+                {t.description}
+              </div>
+              {theme === t.value && (
+                <span className="mt-2 inline-block rounded-full bg-primary px-2 py-0.5 text-xs text-primary-foreground">
+                  Active
+                </span>
+              )}
+            </button>
+          ))}
+        </div>
+      </Section>
     </div>
   );
 }

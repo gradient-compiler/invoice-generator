@@ -11,6 +11,10 @@ export interface PayNowQRParams {
   reference?: string;
   /** Whether the amount is editable by the payer (default true) */
   editable?: boolean;
+  /** Merchant/business name shown to payer (max 25 chars, default "NA") */
+  merchantName?: string;
+  /** Expiry date in YYYYMMDD format (default: 5 years from now) */
+  expiry?: string;
 }
 
 /**
@@ -49,6 +53,8 @@ function buildPayNowPayload(params: PayNowQRParams): string {
     amount,
     reference,
     editable = true,
+    merchantName,
+    expiry,
   } = params;
 
   if (!uen && !mobile) {
@@ -57,7 +63,12 @@ function buildPayNowPayload(params: PayNowQRParams): string {
 
   // Proxy type: 0 = mobile, 2 = UEN
   const proxyType = uen ? "2" : "0";
-  const proxyValue = uen ?? mobile!;
+
+  // Normalize mobile to E.164 format with +65 prefix
+  let proxyValue = uen ?? mobile!;
+  if (!uen && proxyValue && !proxyValue.startsWith("+")) {
+    proxyValue = "+65" + proxyValue;
+  }
 
   // Build merchant account information (tag 26)
   let merchantAccount = "";
@@ -65,6 +76,14 @@ function buildPayNowPayload(params: PayNowQRParams): string {
   merchantAccount += tlv("01", proxyType);
   merchantAccount += tlv("02", proxyValue);
   merchantAccount += tlv("03", editable ? "1" : "0");
+  // Expiry date (default: 5 years from now)
+  const expiryDate =
+    expiry ||
+    new Date(Date.now() + 5 * 365.25 * 24 * 60 * 60 * 1000)
+      .toISOString()
+      .slice(0, 10)
+      .replace(/-/g, "");
+  merchantAccount += tlv("04", expiryDate);
 
   let payload = "";
   // Payload format indicator
@@ -80,20 +99,20 @@ function buildPayNowPayload(params: PayNowQRParams): string {
 
   // Transaction amount (optional)
   if (amount !== undefined && amount > 0) {
-    const amountStr = amount.toFixed(2);
-    payload += tlv("54", amountStr);
+    payload += tlv("54", String(amount));
   }
 
   // Country code
   payload += tlv("58", "SG");
-  // Merchant name
-  payload += tlv("59", "NA");
+  // Merchant name (max 25 chars per EMVCo spec)
+  const name = merchantName ? merchantName.substring(0, 25) : "NA";
+  payload += tlv("59", name);
   // Merchant city
   payload += tlv("60", "Singapore");
 
-  // Additional data field (tag 62) with reference (sub-tag 05)
+  // Additional data field (tag 62) with bill number (sub-tag 01 per PayNow v1.2)
   if (reference) {
-    const additionalData = tlv("05", reference);
+    const additionalData = tlv("01", reference);
     payload += tlv("62", additionalData);
   }
 

@@ -284,7 +284,25 @@ export default function InvoiceDetailPage() {
   }
 
   async function handleMarkPaid() {
-    await updateStatus("paid", { paymentDate, paymentMethod });
+    setActionLoading("paid");
+    try {
+      const res = await fetch("/api/receipts", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          invoiceId: invoice!.id,
+          paymentDate,
+          paymentMethod,
+          amount: invoice!.total,
+        }),
+      });
+      if (!res.ok) throw new Error("Failed to mark as paid");
+      fetchInvoice();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Something went wrong");
+    } finally {
+      setActionLoading("");
+    }
     setShowPaymentDialog(false);
   }
 
@@ -318,7 +336,7 @@ export default function InvoiceDetailPage() {
   }
 
   function handleDownloadPdf() {
-    window.open(`/api/invoices/${invoiceId}/pdf`, "_blank");
+    window.open(`/invoices/${invoiceId}/pdf`, "_blank");
   }
 
   if (loading) {
@@ -429,6 +447,9 @@ export default function InvoiceDetailPage() {
                   <option value="clean-professional">Clean Professional</option>
                   <option value="classic">Classic</option>
                   <option value="modern-minimal">Modern Minimal</option>
+                  <option value="corporate">Corporate</option>
+                  <option value="creative">Creative</option>
+                  <option value="compact-detailed">Compact + Receipt</option>
                 </select>
               </div>
 
@@ -777,6 +798,27 @@ export default function InvoiceDetailPage() {
           </>
         )}
 
+        {invoice.status === "overdue" && (
+          <>
+            <button
+              type="button"
+              onClick={() => setShowPaymentDialog(true)}
+              disabled={!!actionLoading}
+              className="rounded-lg bg-success px-3 py-1.5 text-xs font-medium text-white hover:opacity-90 disabled:opacity-50"
+            >
+              Mark as Paid
+            </button>
+            <button
+              type="button"
+              onClick={() => updateStatus("sent")}
+              disabled={!!actionLoading}
+              className="rounded-lg bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:opacity-90 disabled:opacity-50"
+            >
+              {actionLoading === "sent" ? "Updating..." : "Revert to Sent"}
+            </button>
+          </>
+        )}
+
         {invoice.status === "paid" && (
           <Link
             href={`/receipts?invoiceId=${invoice.id}`}
@@ -879,27 +921,51 @@ export default function InvoiceDetailPage() {
         </div>
       )}
 
-      {/* Client Info */}
-      <div className="rounded-lg border border-border bg-card p-6">
-        <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-          Client
-        </h2>
-        <div className="text-sm space-y-1">
-          <p className="font-medium">{invoice.client?.name}</p>
-          {invoice.client?.parentName && (
-            <p className="text-muted-foreground">
-              Parent: {invoice.client.parentName}
-            </p>
-          )}
-          {invoice.client?.email && (
-            <p className="text-muted-foreground">{invoice.client.email}</p>
-          )}
-          {invoice.client?.phone && (
-            <p className="text-muted-foreground">{invoice.client.phone}</p>
-          )}
-          {invoice.client?.address && (
-            <p className="text-muted-foreground">{invoice.client.address}</p>
-          )}
+      {/* From / Client Info */}
+      <div className="grid gap-6 sm:grid-cols-2">
+        {settings && (
+          <div className="rounded-lg border border-border bg-card p-6">
+            <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+              From
+            </h2>
+            <div className="text-sm space-y-1">
+              <p className="font-medium">{settings.businessName}</p>
+              {settings.address && (
+                <p className="text-muted-foreground">{settings.address}</p>
+              )}
+              {settings.phone && (
+                <p className="text-muted-foreground">{settings.phone}</p>
+              )}
+              {settings.email && (
+                <p className="text-muted-foreground">{settings.email}</p>
+              )}
+              {settings.gstNumber && (
+                <p className="text-muted-foreground">GST: {settings.gstNumber}</p>
+              )}
+            </div>
+          </div>
+        )}
+        <div className="rounded-lg border border-border bg-card p-6">
+          <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+            Bill To
+          </h2>
+          <div className="text-sm space-y-1">
+            <p className="font-medium">{invoice.client?.name}</p>
+            {invoice.client?.parentName && (
+              <p className="text-muted-foreground">
+                c/o {invoice.client.parentName}
+              </p>
+            )}
+            {invoice.client?.email && (
+              <p className="text-muted-foreground">{invoice.client.email}</p>
+            )}
+            {invoice.client?.phone && (
+              <p className="text-muted-foreground">{invoice.client.phone}</p>
+            )}
+            {invoice.client?.address && (
+              <p className="text-muted-foreground">{invoice.client.address}</p>
+            )}
+          </div>
         </div>
       </div>
 
