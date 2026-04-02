@@ -34,7 +34,9 @@ export type AuditAction =
   | "recurring_create"
   | "recurring_update"
   | "recurring_delete"
-  | "recurring_process";
+  | "recurring_process"
+  | "backup_download"
+  | "backup_restore";
 
 export type EntityType =
   | "settings"
@@ -47,7 +49,8 @@ export type EntityType =
   | "export"
   | "auth"
   | "portal"
-  | "recurring_invoice";
+  | "recurring_invoice"
+  | "backup";
 
 /**
  * Log an auditable action.

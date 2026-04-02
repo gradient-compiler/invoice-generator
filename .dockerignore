@@ -1,0 +1,12 @@
+node_modules
+.next
+.git
+.gitignore
+data/*.db
+data/*.db-wal
+data/*.db-shm
+.env
+.env.local
+*.md
+.vscode
+.idea

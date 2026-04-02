@@ -4,12 +4,12 @@ import * as schema from "./schema";
 import path from "path";
 import fs from "fs";
 
-const dbDir = path.resolve(process.cwd(), "data");
+const dbDir = process.env.INVOICE_DB_DIR || path.resolve(process.cwd(), "data");
 if (!fs.existsSync(dbDir)) {
   fs.mkdirSync(dbDir, { recursive: true });
 }
 
-const dbPath = path.resolve(dbDir, "invoice-generator.db");
+export const dbPath = path.resolve(dbDir, "invoice-generator.db");
 const sqlite = new Database(dbPath);
 
 sqlite.pragma("journal_mode = WAL");

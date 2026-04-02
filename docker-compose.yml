@@ -1,0 +1,13 @@
+services:
+  app:
+    build: .
+    ports:
+      - "3000:3000"
+    volumes:
+      - invoice-data:/app/data
+      - invoice-uploads:/app/public/uploads
+    restart: unless-stopped
+
+volumes:
+  invoice-data:
+  invoice-uploads:
