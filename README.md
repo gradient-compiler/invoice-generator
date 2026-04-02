@@ -1,36 +1,80 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Invoice Generator
 
-## Getting Started
+A full-stack invoice and business management system for service-based businesses. Built with a focus on tuition providers and Singapore-based billing workflows (SGD currency, PayNow QR codes, GST support).
 
-First, run the development server:
+## Features
+
+- **Client management** — store client details, contact info, grade levels, and parent names
+- **Session tracking** — log individual service sessions with duration, rates, and status
+- **Invoice generation** — convert sessions to invoices with line items, discounts, and GST
+- **Multiple PDF templates** — Classic, Clean Professional, and Modern Minimal layouts
+- **Receipts** — generate payment receipts with PayNow QR codes
+- **Credit notes** — issue and track credit notes with expiration dates
+- **Dashboard** — overview of business activity and financials
+- **Flexible rate tiers** — hourly, fixed, per-session, and per-unit pricing
+
+## Tech Stack
+
+| Layer | Technology |
+|---|---|
+| Framework | Next.js 16 (App Router) |
+| Language | TypeScript 5 |
+| UI | React 19, Radix UI, Tailwind CSS 4 |
+| Database | SQLite via Drizzle ORM |
+| PDF | @react-pdf/renderer |
+| Forms | React Hook Form + Zod |
+
+## Prerequisites
+
+- Node.js (LTS version recommended)
+- npm
+
+## Installation & Local Development
 
 ```bash
+# 1. Clone the repository
+git clone <repo-url>
+cd invoice-generator
+
+# 2. Install dependencies
+npm install
+
+# 3. Start the development server
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000) in your browser.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+The SQLite database is created automatically at `data/invoice-generator.db` on first run — no additional database setup is required.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Available Scripts
 
-## Learn More
+| Command | Description |
+|---|---|
+| `npm run dev` | Start the development server |
+| `npm run build` | Build for production |
+| `npm start` | Start the production server |
+| `npm run lint` | Run ESLint |
 
-To learn more about Next.js, take a look at the following resources:
+## Project Structure
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+```
+src/
+├── app/
+│   ├── api/          # REST API routes (clients, invoices, receipts, sessions, …)
+│   ├── clients/      # Client management pages
+│   ├── invoices/     # Invoice pages
+│   ├── receipts/     # Receipt pages
+│   ├── sessions/     # Session tracking pages
+│   └── settings/     # App settings page
+├── components/
+│   ├── layout/       # Header, sidebar, page container
+│   └── ui/           # Radix UI wrapper components
+├── db/               # Drizzle ORM schema, migrations, seed
+├── lib/              # Utility helpers (GST, currency, PDF rendering, …)
+├── pdf/
+│   ├── templates/    # Invoice PDF templates
+│   └── receipt-templates/
+└── types/            # Shared TypeScript types
+data/                 # SQLite database (gitignored, auto-created)
+```
