@@ -14,7 +14,7 @@ import {
   CompactDetailedPreview,
 } from "@/components/template-previews";
 
-type Tab = "business" | "rates" | "terms" | "templates" | "appearance" | "email";
+type Tab = "business" | "rates" | "terms" | "templates" | "appearance" | "email" | "data";
 
 export default function SettingsPage() {
   const [activeTab, setActiveTab] = useState<Tab>("business");
@@ -26,6 +26,7 @@ export default function SettingsPage() {
     { id: "templates", label: "Templates" },
     { id: "appearance", label: "Appearance" },
     { id: "email", label: "Email / SMTP" },
+    { id: "data", label: "Data" },
   ];
 
   return (
@@ -58,6 +59,7 @@ export default function SettingsPage() {
         {activeTab === "templates" && <TemplatesTab />}
         {activeTab === "appearance" && <AppearanceTab />}
         {activeTab === "email" && <EmailSmtpTab />}
+        {activeTab === "data" && <DataTab />}
       </div>
     </PageContainer>
   );
@@ -932,6 +934,133 @@ function AppearanceTab() {
           ))}
         </div>
       </Section>
+    </div>
+  );
+}
+
+function DataTab() {
+  const [message, setMessage] = useState("");
+  const [downloading, setDownloading] = useState(false);
+  const [restoring, setRestoring] = useState(false);
+
+  const downloadBackup = async () => {
+    setDownloading(true);
+    setMessage("");
+    try {
+      const res = await fetch("/api/settings/backup");
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setMessage(data.error || "Failed to download backup");
+        setDownloading(false);
+        return;
+      }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download =
+        res.headers.get("Content-Disposition")?.split("filename=")[1]?.replace(/"/g, "") ||
+        `invoice-generator-backup-${new Date().toISOString().slice(0, 10)}.db`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+      setMessage("Backup downloaded successfully!");
+    } catch {
+      setMessage("Error downloading backup");
+    }
+    setDownloading(false);
+  };
+
+  const restoreBackup = async (file: File) => {
+    if (
+      !confirm(
+        "Are you sure you want to restore from this backup? This will replace ALL current data. A backup of the current database will be saved automatically."
+      )
+    ) {
+      return;
+    }
+
+    setRestoring(true);
+    setMessage("");
+    try {
+      const fd = new FormData();
+      fd.append("database", file);
+      const res = await fetch("/api/settings/backup", {
+        method: "POST",
+        body: fd,
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setMessage(data.message || "Database restored successfully!");
+      } else {
+        setMessage(data.error || "Failed to restore backup");
+      }
+    } catch {
+      setMessage("Error restoring backup");
+    }
+    setRestoring(false);
+  };
+
+  return (
+    <div className="max-w-2xl space-y-6">
+      <Section title="Download Backup">
+        <p className="text-sm text-muted-foreground">
+          Download a copy of your entire database. This includes all invoices,
+          clients, sessions, receipts, and settings.
+        </p>
+        <button
+          onClick={downloadBackup}
+          disabled={downloading}
+          className="rounded-lg bg-primary px-6 py-2.5 text-sm font-medium text-primary-foreground hover:opacity-90 disabled:opacity-50"
+        >
+          {downloading ? "Downloading..." : "Download Backup"}
+        </button>
+      </Section>
+
+      <Section title="Restore from Backup">
+        <p className="text-sm text-muted-foreground">
+          Upload a previously downloaded backup file to restore your data. This
+          will replace all current data. A backup of the current database is
+          saved automatically before restoring.
+        </p>
+        <p className="text-sm font-medium text-destructive">
+          Warning: Restoring a backup will overwrite all existing data. The
+          application may need to be restarted after restoring.
+        </p>
+        <input
+          type="file"
+          accept=".db"
+          onChange={(e) => {
+            const file = e.target.files?.[0];
+            if (file) restoreBackup(file);
+            e.target.value = "";
+          }}
+          disabled={restoring}
+          className="input-field cursor-pointer file:mr-3 file:rounded file:border-0 file:bg-primary/10 file:px-3 file:py-1 file:text-xs file:font-medium file:text-primary"
+        />
+      </Section>
+
+      <Section title="Manual Backup">
+        <p className="text-sm text-muted-foreground">
+          You can also back up manually by copying the database file and uploads
+          folder:
+        </p>
+        <pre className="rounded-lg bg-muted p-3 text-xs text-muted-foreground overflow-x-auto">
+{`cp data/invoice-generator.db ~/backups/
+cp -r public/uploads ~/backups/`}
+        </pre>
+      </Section>
+
+      {message && (
+        <p
+          className={`text-sm ${
+            message.includes("success") ? "text-success" : "text-destructive"
+          }`}
+        >
+          {message}
+        </p>
+      )}
     </div>
   );
 }
