@@ -37,12 +37,12 @@ export default function NewClientPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           name: name.trim(),
-          parentName: parentName.trim() || null,
-          phone: phone.trim() || null,
-          email: email.trim() || null,
-          address: address.trim() || null,
-          notes: notes.trim() || null,
-          gradeLevel: gradeLevel || null,
+          parentName: parentName.trim() || undefined,
+          phone: phone.trim() || undefined,
+          email: email.trim() || undefined,
+          address: address.trim() || undefined,
+          notes: notes.trim() || undefined,
+          gradeLevel: gradeLevel || undefined,
           clientType,
         }),
       });

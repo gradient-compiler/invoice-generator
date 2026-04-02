@@ -66,12 +66,12 @@ export default function EditClientPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           name: name.trim(),
-          parentName: parentName.trim() || null,
-          phone: phone.trim() || null,
-          email: email.trim() || null,
-          address: address.trim() || null,
-          notes: notes.trim() || null,
-          gradeLevel: gradeLevel || null,
+          parentName: parentName.trim() || undefined,
+          phone: phone.trim() || undefined,
+          email: email.trim() || undefined,
+          address: address.trim() || undefined,
+          notes: notes.trim() || undefined,
+          gradeLevel: gradeLevel || undefined,
           clientType,
         }),
       });
@@ -99,7 +99,26 @@ export default function EditClientPage() {
         const data = await res.json().catch(() => ({}));
         throw new Error(data.error || "Failed to deactivate client");
       }
-      router.push("/clients");
+      setIsActive(false);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Something went wrong");
+    }
+  }
+
+  async function handleActivate() {
+    if (!confirm("Are you sure you want to activate this client?")) return;
+
+    try {
+      const res = await fetch(`/api/clients/${clientId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ isActive: true }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || "Failed to activate client");
+      }
+      setIsActive(true);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong");
     }
@@ -129,9 +148,12 @@ export default function EditClientPage() {
               Deactivate
             </button>
           ) : (
-            <span className="rounded-full bg-muted px-3 py-1 text-xs font-medium text-muted-foreground">
-              Inactive
-            </span>
+            <button
+              onClick={handleActivate}
+              className="rounded-lg border border-border px-4 py-2 text-sm font-medium hover:bg-accent"
+            >
+              Activate
+            </button>
           )
         }
       />

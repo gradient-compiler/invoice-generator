@@ -485,6 +485,7 @@ function RateTiersTab() {
               onSave={(data) => updateRate(rate.id, data)}
               onCancel={() => setEditingId(null)}
               onDelete={() => deleteRate(rate.id)}
+              onReactivate={() => updateRate(rate.id, { isActive: true })}
             />
           ))}
         </tbody>
@@ -500,6 +501,7 @@ function RateRow({
   onSave,
   onCancel,
   onDelete,
+  onReactivate,
 }: {
   rate: RateTier;
   editing: boolean;
@@ -507,6 +509,7 @@ function RateRow({
   onSave: (data: Partial<RateTier>) => void;
   onCancel: () => void;
   onDelete: () => void;
+  onReactivate: () => void;
 }) {
   const [editData, setEditData] = useState(rate);
 
@@ -608,12 +611,19 @@ function RateRow({
         >
           Edit
         </button>
-        {rate.isActive && (
+        {rate.isActive ? (
           <button
             onClick={onDelete}
             className="text-destructive hover:underline"
           >
             Deactivate
+          </button>
+        ) : (
+          <button
+            onClick={onReactivate}
+            className="text-primary hover:underline"
+          >
+            Reactivate
           </button>
         )}
       </td>
