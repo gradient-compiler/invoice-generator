@@ -293,7 +293,10 @@ export default function InvoiceDetailPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status: newStatus, ...extra }),
       });
-      if (!res.ok) throw new Error("Failed to update status");
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || "Failed to update status");
+      }
       fetchInvoice();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong");

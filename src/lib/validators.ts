@@ -73,7 +73,7 @@ export const sessionSchema = z.object({
     .enum(["charge", "waive", "credit", "reschedule"])
     .optional()
     .nullable(),
-  notes: z.string().optional(),
+  notes: z.string().optional().nullable(),
 });
 
 export type SessionFormValues = z.infer<typeof sessionSchema>;
@@ -101,18 +101,19 @@ export type InvoiceLineItemFormValues = z.infer<typeof invoiceLineItemSchema>;
 // ---------------------------------------------------------------------------
 export const invoiceSchema = z.object({
   clientId: z.coerce.number().int().positive("Client is required"),
+  status: z.enum(["draft", "sent", "viewed", "paid", "overdue", "cancelled"]).optional(),
   issueDate: z.string().min(1, "Issue date is required"),
   dueDate: z.string().min(1, "Due date is required"),
   currency: z.string().default("SGD"),
   discountType: z.enum(["percentage", "fixed"]).optional().nullable(),
   discountValue: z.coerce.number().min(0).default(0),
-  discountLabel: z.string().optional(),
+  discountLabel: z.string().optional().nullable(),
   taxRate: z.coerce.number().min(0).default(0),
-  notes: z.string().optional(),
+  notes: z.string().optional().nullable(),
   paymentTerms: z.string().default("Due upon receipt"),
-  lateFeeNote: z.string().optional(),
+  lateFeeNote: z.string().optional().nullable(),
   template: z.string().default("clean-professional"),
-  billingMonth: z.string().optional(),
+  billingMonth: z.string().optional().nullable(),
   lineItems: z.array(invoiceLineItemSchema).min(1, "At least one line item is required"),
 });
 

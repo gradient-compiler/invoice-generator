@@ -54,6 +54,7 @@ export default function RecurringInvoicesPage() {
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
 
   // Form state
   const [formClientId, setFormClientId] = useState<number>(0);
@@ -117,7 +118,7 @@ export default function RecurringInvoicesPage() {
       const payload = {
         clientId: formClientId,
         frequency: formFrequency,
-        lineItems: validItems,
+        lineItemsJson: JSON.stringify(validItems),
         currency: "SGD",
         paymentTerms: formPaymentTerms,
         template: formTemplate,
@@ -136,21 +137,38 @@ export default function RecurringInvoicesPage() {
         body: JSON.stringify(payload),
       });
 
-      if (res.ok) {
-        // Refetch list
-        const updated = await fetch("/api/invoices/recurring").then((r) =>
-          r.json()
-        );
-        setItems(Array.isArray(updated) ? updated : []);
-        setShowForm(false);
-        resetForm();
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setError(data.error || "Failed to save recurring invoice");
+        return;
       }
-    } catch {}
-    setSaving(false);
+      // Refetch list
+      const updated = await fetch("/api/invoices/recurring").then((r) =>
+        r.json()
+      );
+      setItems(Array.isArray(updated) ? updated : []);
+      setShowForm(false);
+      resetForm();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Something went wrong");
+    } finally {
+      setSaving(false);
+    }
   }
 
   async function handleToggle(id: number) {
-    await fetch(`/api/invoices/recurring/${id}`, { method: "PATCH" });
+    const current = items.find((i) => i.id === id);
+    if (!current) return;
+    const res = await fetch(`/api/invoices/recurring/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ isActive: !current.isActive }),
+    });
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      setError(data.error || "Failed to toggle recurring invoice");
+      return;
+    }
     const updated = await fetch("/api/invoices/recurring").then((r) =>
       r.json()
     );
@@ -206,6 +224,13 @@ export default function RecurringInvoicesPage() {
           </button>
         }
       />
+
+      {error && (
+        <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800 dark:border-red-800 dark:bg-red-950 dark:text-red-200">
+          {error}
+          <button type="button" onClick={() => setError("")} className="ml-2 font-medium underline">Dismiss</button>
+        </div>
+      )}
 
       {/* Create / Edit Form */}
       {showForm && (
