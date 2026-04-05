@@ -9,6 +9,7 @@ export const businessSettings = sqliteTable("business_settings", {
   email: text("email").default(""),
   logoPath: text("logo_path"),
   gstRegistered: integer("gst_registered", { mode: "boolean" }).default(false),
+  gstRate: real("gst_rate").default(9),
   gstNumber: text("gst_number"),
   defaultCurrency: text("default_currency").default("SGD"),
   invoicePrefix: text("invoice_prefix").default("INV"),

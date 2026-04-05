@@ -4,6 +4,7 @@ import { invoices } from "@/db/schema";
 import { eq, sql, and } from "drizzle-orm";
 import { ensureDbInitialized } from "@/db/init";
 import { requireAuth } from "@/lib/auth";
+import { logAudit } from "@/lib/audit";
 
 export async function POST(request: Request) {
   try {
@@ -25,6 +26,9 @@ export async function POST(request: Request) {
       )
       .run();
 
+    if (result.changes > 0) {
+      logAudit({ action: "invoice_status_change", entityType: "invoice", detail: `Marked ${result.changes} invoices as overdue`, request });
+    }
     return NextResponse.json({ updated: result.changes });
   } catch (error) {
     console.error("Mark overdue error:", error);

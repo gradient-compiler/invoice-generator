@@ -6,6 +6,7 @@ import { ensureDbInitialized } from "@/db/init";
 import { requireAuth } from "@/lib/auth";
 import { clientSchema } from "@/lib/validators";
 import { safeEncrypt, safeDecrypt } from "@/lib/crypto";
+import { parseId } from "@/lib/parse-id";
 
 const CLIENT_UPDATABLE_FIELDS = new Set([
   "name", "parentName", "email", "phone", "address",
@@ -29,11 +30,13 @@ export async function GET(
     if (authError) return authError;
     ensureDbInitialized();
     const { id } = await params;
+    const parsed = parseId(id);
+    if ("error" in parsed) return parsed.error;
 
     const client = db
       .select()
       .from(clients)
-      .where(eq(clients.id, parseInt(id)))
+      .where(eq(clients.id, parsed.id))
       .get();
 
     if (!client) {
@@ -66,6 +69,10 @@ export async function PUT(
     if (authError) return authError;
     ensureDbInitialized();
     const { id } = await params;
+    const parsedId = parseId(id);
+    if ("error" in parsedId) return parsedId.error;
+    const numericId = parsedId.id;
+
     const body = await request.json();
     const parsed = clientSchema.partial().safeParse(body);
     if (!parsed.success) {
@@ -78,7 +85,7 @@ export async function PUT(
     const existing = db
       .select()
       .from(clients)
-      .where(eq(clients.id, parseInt(id)))
+      .where(eq(clients.id, numericId))
       .get();
 
     if (!existing) {
@@ -100,7 +107,7 @@ export async function PUT(
         ...filteredData,
         updatedAt: new Date().toISOString(),
       })
-      .where(eq(clients.id, parseInt(id)))
+      .where(eq(clients.id, numericId))
       .returning()
       .get();
 
@@ -130,11 +137,13 @@ export async function DELETE(
     if (authError) return authError;
     ensureDbInitialized();
     const { id } = await params;
+    const parsedId = parseId(id);
+    if ("error" in parsedId) return parsedId.error;
 
     const result = db
       .update(clients)
       .set({ isActive: false, updatedAt: new Date().toISOString() })
-      .where(eq(clients.id, parseInt(id)))
+      .where(eq(clients.id, parsedId.id))
       .returning()
       .get();
 

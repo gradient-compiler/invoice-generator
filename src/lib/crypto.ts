@@ -80,7 +80,8 @@ export function safeDecrypt(value: string | null | undefined): string | null {
   try {
     return decrypt(value);
   } catch {
-    return value;
+    // Return null instead of the raw ciphertext to avoid leaking encrypted data
+    return null;
   }
 }
 

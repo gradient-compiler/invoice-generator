@@ -1,9 +1,12 @@
 import { NextResponse } from "next/server";
 import { db } from "@/db";
-import { invoices, invoiceLineItems, businessSettings } from "@/db/schema";
+import { invoices, invoiceLineItems } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { ensureDbInitialized } from "@/db/init";
 import { requireAuth } from "@/lib/auth";
+import { parseId } from "@/lib/parse-id";
+import { logAudit } from "@/lib/audit";
+import { claimNextInvoiceNumber } from "@/lib/invoice-number";
 
 export async function POST(
   request: Request,
@@ -14,7 +17,9 @@ export async function POST(
     if (authError) return authError;
     ensureDbInitialized();
     const { id } = await params;
-    const originalId = parseInt(id);
+    const parsed = parseId(id);
+    if ("error" in parsed) return parsed.error;
+    const originalId = parsed.id;
 
     const original = db
       .select()
@@ -29,21 +34,8 @@ export async function POST(
       );
     }
 
-    // Generate new invoice number
-    const settings = db
-      .select()
-      .from(businessSettings)
-      .where(eq(businessSettings.id, 1))
-      .get();
-
-    const prefix = settings?.invoicePrefix || "INV";
-    const nextNum = settings?.nextInvoiceNum || 1;
-    const invoiceNumber = `${prefix}-${String(nextNum).padStart(5, "0")}`;
-
-    db.update(businessSettings)
-      .set({ nextInvoiceNum: nextNum + 1 })
-      .where(eq(businessSettings.id, 1))
-      .run();
+    // Atomically claim next invoice number
+    const { invoiceNumber } = claimNextInvoiceNumber();
 
     // Create duplicated invoice
     const newInvoice = db
@@ -103,6 +95,7 @@ export async function POST(
       .where(eq(invoiceLineItems.invoiceId, newInvoice.id))
       .all();
 
+    logAudit({ action: "invoice_duplicate", entityType: "invoice", entityId: newInvoice.id, detail: `Duplicated from ${originalId}`, request });
     return NextResponse.json(
       { ...newInvoice, lineItems: newLineItems },
       { status: 201 }

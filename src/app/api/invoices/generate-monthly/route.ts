@@ -12,6 +12,8 @@ import {
 import { eq, and, sql } from "drizzle-orm";
 import { ensureDbInitialized } from "@/db/init";
 import { requireAuth } from "@/lib/auth";
+import { claimNextInvoiceNumber } from "@/lib/invoice-number";
+import { logAudit } from "@/lib/audit";
 
 export async function POST(request: Request) {
   try {
@@ -134,21 +136,8 @@ export async function POST(request: Request) {
 
       if (!client) continue;
 
-      // Generate invoice number atomically
-      const currentSettings = db
-        .select()
-        .from(businessSettings)
-        .where(eq(businessSettings.id, 1))
-        .get()!;
-
-      const prefix = currentSettings.invoicePrefix || "INV";
-      const nextNum = currentSettings.nextInvoiceNum || 1;
-      const invoiceNumber = `${prefix}-${String(nextNum).padStart(5, "0")}`;
-
-      db.update(businessSettings)
-        .set({ nextInvoiceNum: nextNum + 1 })
-        .where(eq(businessSettings.id, 1))
-        .run();
+      // Atomically claim next invoice number (prevents race conditions)
+      const { invoiceNumber } = claimNextInvoiceNumber();
 
       // Build line items
       const lineItemsToInsert: Array<{
@@ -280,8 +269,8 @@ export async function POST(request: Request) {
 
       const afterDiscount = subtotal - creditDiscount;
 
-      // Apply GST if registered
-      const taxRate = settings.gstRegistered ? 9 : 0;
+      // Apply GST if registered (use configurable rate, default 9%)
+      const taxRate = settings.gstRegistered ? (settings.gstRate ?? 9) : 0;
       const taxAmount = afterDiscount * (taxRate / 100);
       const total = afterDiscount + taxAmount;
 
@@ -366,6 +355,10 @@ export async function POST(request: Request) {
         clientName: client.name,
         lineItems: createdLineItems,
       });
+    }
+
+    for (const inv of createdInvoices) {
+      logAudit({ action: "invoice_create", entityType: "invoice", entityId: inv.id, detail: `Monthly generation for ${month}`, request });
     }
 
     return NextResponse.json(

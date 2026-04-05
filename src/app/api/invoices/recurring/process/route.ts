@@ -1,9 +1,21 @@
 import { NextResponse } from "next/server";
+import { z } from "zod";
 import { db } from "@/db";
 import { recurringInvoices, invoices, invoiceLineItems, businessSettings } from "@/db/schema";
 import { eq, and, lte, sql } from "drizzle-orm";
 import { ensureDbInitialized } from "@/db/init";
 import { requireAuth } from "@/lib/auth";
+import { logAudit } from "@/lib/audit";
+import { claimNextInvoiceNumber } from "@/lib/invoice-number";
+
+const lineItemSchema = z.array(
+  z.object({
+    description: z.string().min(1),
+    quantity: z.number().positive(),
+    unitPrice: z.number().min(0),
+    unitLabel: z.string().default("hr"),
+  })
+).min(1);
 
 function addToDate(dateStr: string, frequency: string): string {
   const d = new Date(dateStr + "T00:00:00");
@@ -72,15 +84,24 @@ export async function POST(request: Request) {
       .where(eq(businessSettings.id, 1))
       .get();
 
-    const prefix = settings?.invoicePrefix || "INV";
-    let nextNum = settings?.nextInvoiceNum || 1;
-    const gstRate = settings?.gstRegistered ? 9 : 0;
+    const gstRate = settings?.gstRegistered ? (settings.gstRate ?? 9) : 0;
 
     const generatedIds: number[] = [];
 
     for (const rec of dueRecurring) {
-      const lineItems: Array<{ description: string; quantity: number; unitPrice: number; unitLabel: string }> =
-        JSON.parse(rec.lineItemsJson);
+      let parsedItems: unknown;
+      try {
+        parsedItems = JSON.parse(rec.lineItemsJson);
+      } catch {
+        console.error(`Invalid JSON in recurring invoice ${rec.id}, skipping`);
+        continue;
+      }
+      const validated = lineItemSchema.safeParse(parsedItems);
+      if (!validated.success) {
+        console.error(`Invalid line items in recurring invoice ${rec.id}: ${validated.error.message}`);
+        continue;
+      }
+      const lineItems = validated.data;
 
       const subtotal = lineItems.reduce((s, li) => s + li.quantity * li.unitPrice, 0);
 
@@ -95,8 +116,7 @@ export async function POST(request: Request) {
       const taxAmount = Math.round(afterDiscount * (gstRate / 100) * 100) / 100;
       const total = Math.round((afterDiscount + taxAmount) * 100) / 100;
 
-      const invoiceNumber = `${prefix}-${String(nextNum).padStart(5, "0")}`;
-      nextNum++;
+      const { invoiceNumber } = claimNextInvoiceNumber();
 
       const issueDate = today;
       const dueDate = getDueDate(issueDate, rec.paymentTerms || "Due upon receipt");
@@ -153,13 +173,8 @@ export async function POST(request: Request) {
         .run();
 
       generatedIds.push(newInvoice.id);
+      logAudit({ action: "recurring_process", entityType: "recurring_invoice", entityId: rec.id, detail: `Generated invoice ${newInvoice.invoiceNumber}`, request });
     }
-
-    // Update next invoice number
-    db.update(businessSettings)
-      .set({ nextInvoiceNum: nextNum })
-      .where(eq(businessSettings.id, 1))
-      .run();
 
     return NextResponse.json({ generated: generatedIds });
   } catch (error) {

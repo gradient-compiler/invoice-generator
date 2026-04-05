@@ -6,6 +6,7 @@ import { ensureDbInitialized } from "@/db/init";
 import { renderInvoicePDF } from "@/pdf/render-pdf";
 import { generatePayNowQR } from "@/lib/paynow-qr";
 import { safeDecrypt } from "@/lib/crypto";
+import { checkRateLimit, getClientIp } from "@/lib/rate-limit";
 import type { InvoicePDFData } from "@/types";
 
 export async function GET(
@@ -14,6 +15,13 @@ export async function GET(
 ) {
   try {
     ensureDbInitialized();
+
+    // Rate limit portal PDF generation: max 10 per minute per IP (PDF is expensive)
+    const rl = checkRateLimit(`portal-pdf:${getClientIp(request)}`, { maxRequests: 10, windowMs: 60_000 });
+    if (!rl.allowed) {
+      return new Response("Too many requests", { status: 429 });
+    }
+
     const { token } = await params;
 
     // Check token expiry first

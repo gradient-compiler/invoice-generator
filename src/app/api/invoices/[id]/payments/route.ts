@@ -4,6 +4,7 @@ import { receipts } from "@/db/schema";
 import { eq, sql } from "drizzle-orm";
 import { ensureDbInitialized } from "@/db/init";
 import { requireAuth } from "@/lib/auth";
+import { parseId } from "@/lib/parse-id";
 
 export async function GET(
   request: Request,
@@ -14,11 +15,13 @@ export async function GET(
     if (authError) return authError;
     ensureDbInitialized();
     const { id } = await params;
+    const parsed = parseId(id);
+    if ("error" in parsed) return parsed.error;
 
     const payments = db
       .select()
       .from(receipts)
-      .where(eq(receipts.invoiceId, parseInt(id)))
+      .where(eq(receipts.invoiceId, parsed.id))
       .orderBy(sql`${receipts.paymentDate} DESC`)
       .all();
 

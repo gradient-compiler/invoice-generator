@@ -5,6 +5,7 @@ import { eq } from "drizzle-orm";
 import { ensureDbInitialized } from "@/db/init";
 import { requireAuth } from "@/lib/auth";
 import { logAudit } from "@/lib/audit";
+import { parseId } from "@/lib/parse-id";
 
 export async function POST(
   request: Request,
@@ -15,11 +16,14 @@ export async function POST(
     if (authError) return authError;
     ensureDbInitialized();
     const { id } = await params;
+    const parsed = parseId(id);
+    if ("error" in parsed) return parsed.error;
+    const numericId = parsed.id;
 
     const existing = db
       .select()
       .from(invoices)
-      .where(eq(invoices.id, parseInt(id)))
+      .where(eq(invoices.id, numericId))
       .get();
 
     if (!existing) {
@@ -36,7 +40,7 @@ export async function POST(
     const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
     db.update(invoices)
       .set({ shareToken: token, shareTokenExpiresAt: expiresAt, updatedAt: new Date().toISOString() })
-      .where(eq(invoices.id, parseInt(id)))
+      .where(eq(invoices.id, numericId))
       .run();
 
     logAudit({ action: "invoice_share", entityType: "invoice", entityId: id, request });
@@ -56,10 +60,13 @@ export async function DELETE(
     if (authError) return authError;
     ensureDbInitialized();
     const { id } = await params;
+    const parsed = parseId(id);
+    if ("error" in parsed) return parsed.error;
+    const numericId = parsed.id;
 
     db.update(invoices)
       .set({ shareToken: null, shareTokenExpiresAt: null, updatedAt: new Date().toISOString() })
-      .where(eq(invoices.id, parseInt(id)))
+      .where(eq(invoices.id, numericId))
       .run();
 
     logAudit({ action: "invoice_unshare", entityType: "invoice", entityId: id, request });
