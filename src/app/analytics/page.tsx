@@ -83,13 +83,13 @@ function formatCurrency(amount: number) {
 function formatMonth(monthStr: string) {
   const [year, month] = monthStr.split("-");
   const date = new Date(Number(year), Number(month) - 1);
-  return date.toLocaleDateString(undefined, { month: "short", year: "2-digit" });
+  return date.toLocaleDateString("en-SG", { month: "short", year: "2-digit" });
 }
 
 function formatMonthLong(monthStr: string) {
   const [year, month] = monthStr.split("-");
   const date = new Date(Number(year), Number(month) - 1);
-  return date.toLocaleDateString(undefined, { month: "long", year: "numeric" });
+  return date.toLocaleDateString("en-SG", { month: "long", year: "numeric" });
 }
 
 export default function AnalyticsPage() {

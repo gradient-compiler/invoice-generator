@@ -473,6 +473,7 @@ export default function InvoiceDetailPage() {
                   <option value="corporate">Corporate</option>
                   <option value="creative">Creative</option>
                   <option value="compact-detailed">Compact + Receipt</option>
+                  <option value="compact">Compact</option>
                 </select>
               </div>
 

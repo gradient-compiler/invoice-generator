@@ -6,6 +6,7 @@ import { ensureDbInitialized } from "@/db/init";
 import { requireAuth } from "@/lib/auth";
 import { invoiceSchema } from "@/lib/validators";
 import { parseId } from "@/lib/parse-id";
+import { safeDecrypt } from "@/lib/crypto";
 
 const INVOICE_UPDATABLE_FIELDS = new Set([
   "clientId", "status", "issueDate", "dueDate", "currency", "subtotal",
@@ -93,10 +94,10 @@ export async function GET(
       client: {
         id: row.clientId,
         name: clientName,
-        parentName: clientParentName,
-        email: clientEmail,
-        phone: clientPhone,
-        address: clientAddress,
+        parentName: safeDecrypt(clientParentName),
+        email: safeDecrypt(clientEmail),
+        phone: safeDecrypt(clientPhone),
+        address: safeDecrypt(clientAddress),
       },
       lineItems,
     });

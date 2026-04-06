@@ -12,6 +12,7 @@ import {
   CorporatePreview,
   CreativePreview,
   CompactDetailedPreview,
+  CompactPreview,
 } from "@/components/template-previews";
 
 type Tab = "business" | "rates" | "terms" | "templates" | "appearance" | "email" | "data";
@@ -837,6 +838,12 @@ function TemplatesTab() {
         description:
           "Space-efficient layout with a tear-off payment slip section at the bottom",
       },
+      {
+        slug: "compact",
+        name: "Compact",
+        description:
+          "Space-efficient layout with compact typography and minimal padding",
+      },
     ]);
   }, []);
 
@@ -871,6 +878,7 @@ function TemplatesTab() {
             {tpl.slug === "corporate" && <CorporatePreview />}
             {tpl.slug === "creative" && <CreativePreview />}
             {tpl.slug === "compact-detailed" && <CompactDetailedPreview />}
+            {tpl.slug === "compact" && <CompactPreview />}
             <h3 className="font-medium">{tpl.name}</h3>
             <p className="mt-1 text-xs text-muted-foreground">
               {tpl.description}

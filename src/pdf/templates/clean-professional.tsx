@@ -6,6 +6,7 @@ import {
   Image,
   StyleSheet,
 } from "@react-pdf/renderer";
+import "@/pdf/fonts";
 import type { InvoicePDFData } from "@/types";
 import { PDFLineItemsTable } from "../components/pdf-line-items-table";
 import { PDFTotals } from "../components/pdf-totals";
@@ -34,6 +35,7 @@ const styles = StyleSheet.create({
   },
   businessName: {
     fontSize: 18,
+    fontFamily: "EB Garamond",
     fontWeight: "bold",
     color: "#1a365d",
     marginBottom: 4,
@@ -46,14 +48,28 @@ const styles = StyleSheet.create({
   invoiceBox: {
     backgroundColor: "#f7fafc",
     borderRadius: 4,
-    padding: 14,
-    width: 180,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    justifyContent: "center" as const,
   },
   invoiceLabel: {
     fontSize: 20,
     fontWeight: "bold",
     color: "#1a365d",
-    marginBottom: 10,
+  },
+  twoCols: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginBottom: 24,
+  },
+  billToCol: {
+    flex: 1,
+  },
+  invoiceDetailsCol: {
+    width: 200,
+    backgroundColor: "#f7fafc",
+    borderRadius: 4,
+    padding: 14,
   },
   invoiceDetailRow: {
     flexDirection: "row",
@@ -68,9 +84,6 @@ const styles = StyleSheet.create({
     fontSize: 9,
     color: "#2d3748",
     fontWeight: "bold",
-  },
-  billTo: {
-    marginBottom: 24,
   },
   billToLabel: {
     fontSize: 9,
@@ -173,6 +186,31 @@ export function CleanProfessionalTemplate({ data }: CleanProfessionalProps) {
           </View>
           <View style={styles.invoiceBox}>
             <Text style={styles.invoiceLabel}>INVOICE</Text>
+          </View>
+        </View>
+
+        {/* Two-column: Bill To + Invoice Details */}
+        <View style={styles.twoCols}>
+          <View style={styles.billToCol}>
+            <Text style={styles.billToLabel}>Bill To</Text>
+            <Text style={styles.clientName}>{data.clientName}</Text>
+            {data.clientParentName && (
+              <Text style={styles.clientDetail}>
+                c/o {data.clientParentName}
+              </Text>
+            )}
+            {data.clientAddress && (
+              <Text style={styles.clientDetail}>{data.clientAddress}</Text>
+            )}
+            {data.clientPhone && (
+              <Text style={styles.clientDetail}>{data.clientPhone}</Text>
+            )}
+            {data.clientEmail && (
+              <Text style={styles.clientDetail}>{data.clientEmail}</Text>
+            )}
+          </View>
+          <View style={styles.invoiceDetailsCol}>
+            <Text style={styles.billToLabel}>Invoice Details</Text>
             <View style={styles.invoiceDetailRow}>
               <Text style={styles.invoiceDetailLabel}>Invoice #</Text>
               <Text style={styles.invoiceDetailValue}>
@@ -187,27 +225,11 @@ export function CleanProfessionalTemplate({ data }: CleanProfessionalProps) {
               <Text style={styles.invoiceDetailLabel}>Due Date</Text>
               <Text style={styles.invoiceDetailValue}>{data.dueDate}</Text>
             </View>
+            <View style={styles.invoiceDetailRow}>
+              <Text style={styles.invoiceDetailLabel}>Status</Text>
+              <Text style={styles.invoiceDetailValue}>{data.status}</Text>
+            </View>
           </View>
-        </View>
-
-        {/* Bill To */}
-        <View style={styles.billTo}>
-          <Text style={styles.billToLabel}>Bill To</Text>
-          <Text style={styles.clientName}>{data.clientName}</Text>
-          {data.clientParentName && (
-            <Text style={styles.clientDetail}>
-              c/o {data.clientParentName}
-            </Text>
-          )}
-          {data.clientAddress && (
-            <Text style={styles.clientDetail}>{data.clientAddress}</Text>
-          )}
-          {data.clientPhone && (
-            <Text style={styles.clientDetail}>{data.clientPhone}</Text>
-          )}
-          {data.clientEmail && (
-            <Text style={styles.clientDetail}>{data.clientEmail}</Text>
-          )}
         </View>
 
         {/* Line Items Table */}

@@ -4,6 +4,7 @@ import { receipts, invoices, clients } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { ensureDbInitialized } from "@/db/init";
 import { requireAuth } from "@/lib/auth";
+import { safeDecrypt } from "@/lib/crypto";
 
 export async function GET(
   request: Request,
@@ -44,7 +45,10 @@ export async function GET(
       );
     }
 
-    return NextResponse.json(receipt);
+    return NextResponse.json({
+      ...receipt,
+      clientParentName: safeDecrypt(receipt.clientParentName),
+    });
   } catch (error) {
     console.error("Get receipt error:", error);
     return NextResponse.json(

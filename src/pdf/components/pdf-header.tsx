@@ -1,4 +1,5 @@
 import { View, Text, Image, StyleSheet } from "@react-pdf/renderer";
+import "@/pdf/fonts";
 import type { InvoicePDFData } from "@/types";
 
 const styles = StyleSheet.create({
@@ -17,6 +18,7 @@ const styles = StyleSheet.create({
   },
   businessName: {
     fontSize: 18,
+    fontFamily: "EB Garamond",
     fontWeight: "bold",
     color: "#1a365d",
     marginBottom: 4,

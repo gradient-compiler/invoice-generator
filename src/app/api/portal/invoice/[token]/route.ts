@@ -109,9 +109,16 @@ export async function GET(
         }
       : settings;
 
+    const decryptedInvoice = {
+      ...invoice,
+      clientParentName: safeDecrypt(invoice.clientParentName),
+      clientEmail: safeDecrypt(invoice.clientEmail),
+      clientAddress: safeDecrypt(invoice.clientAddress),
+    };
+
     logAudit({ action: "portal_access", entityType: "portal", entityId: invoice.invoiceNumber, request });
     return NextResponse.json({
-      invoice,
+      invoice: decryptedInvoice,
       lineItems,
       business: decryptedBusiness,
     });

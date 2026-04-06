@@ -261,6 +261,7 @@ export function ensureDbInitialized() {
     { slug: "corporate", name: "Corporate", description: "Formal layout with gray header band, structured grid, and professional sans-serif typography" },
     { slug: "creative", name: "Creative", description: "Colorful accent stripe with sidebar element, bold invoice number, and modern layout" },
     { slug: "compact-detailed", name: "Compact + Receipt", description: "Space-efficient layout with a tear-off payment slip section at the bottom" },
+    { slug: "compact", name: "Compact", description: "Space-efficient layout with compact typography and minimal padding" },
   ];
   const existingTemplates = db.select().from(invoiceTemplates).all();
   const existingSlugs = new Set(existingTemplates.map((t) => t.slug));

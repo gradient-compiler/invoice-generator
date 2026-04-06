@@ -43,6 +43,14 @@ function newLineItem(): LineItem {
   };
 }
 
+function rateTypeToUnitLabel(rateType: string | null | undefined): string {
+  switch (rateType) {
+    case "per_session": return "session";
+    case "fixed": return "unit";
+    default: return "hr";
+  }
+}
+
 function today() {
   return new Date().toISOString().split("T")[0];
 }
@@ -140,18 +148,21 @@ export default function NewInvoicePage() {
   // Build suggested line items from uninvoiced sessions grouped by rate
   const sessionSuggestions = (() => {
     if (uninvoicedSessions.length === 0) return [];
-    const groups = new Map<string, { tierName: string; rate: number; durations: number[] }>();
+    const groups = new Map<string, { tierName: string; rate: number; rateType: string; durations: number[] }>();
     for (const s of uninvoicedSessions) {
       const rate = s.rateOverride ?? s.rateTierRate ?? 0;
       const tierName = s.rateTierName || "Custom";
+      const tier = rateTiers.find((t) => t.id === s.rateTierId);
+      const rateType = tier?.rateType ?? "hourly";
       const key = `${tierName}-${rate}`;
-      if (!groups.has(key)) groups.set(key, { tierName, rate, durations: [] });
+      if (!groups.has(key)) groups.set(key, { tierName, rate, rateType, durations: [] });
       groups.get(key)!.durations.push(s.durationHours);
     }
     return Array.from(groups.values()).map((g) => {
       const totalHours = g.durations.reduce((a, b) => a + b, 0);
       const count = g.durations.length;
       const allSame = g.durations.every((d) => d === g.durations[0]);
+      const unitLabel = rateTypeToUnitLabel(g.rateType);
       const durationDesc = allSame
         ? `${count} session${count !== 1 ? "s" : ""} x ${g.durations[0]} hrs`
         : `${count} session${count !== 1 ? "s" : ""} (${g.durations.map((d) => `${d} hrs`).join(", ")})`;
@@ -160,17 +171,18 @@ export default function NewInvoicePage() {
         quantity: totalHours,
         unitPrice: g.rate,
         tierName: g.tierName,
+        unitLabel,
       };
     });
   })();
 
-  function applySuggestion(suggestion: { description: string; quantity: number; unitPrice: number }) {
+  function applySuggestion(suggestion: { description: string; quantity: number; unitPrice: number; unitLabel?: string }) {
     const item: LineItem = {
       key: crypto.randomUUID(),
       description: suggestion.description,
       quantity: suggestion.quantity,
       unitPrice: suggestion.unitPrice,
-      unitLabel: "hr",
+      unitLabel: suggestion.unitLabel || "hr",
       amount: Math.round(suggestion.quantity * suggestion.unitPrice * 100) / 100,
     };
     setLineItems((prev) => {
@@ -343,6 +355,7 @@ export default function NewInvoicePage() {
                 <option value="corporate">Corporate</option>
                 <option value="creative">Creative</option>
                 <option value="compact-detailed">Compact + Receipt</option>
+                <option value="compact">Compact</option>
               </select>
             </div>
 
@@ -441,11 +454,12 @@ export default function NewInvoicePage() {
                         description: `English Tuition (${tier.name})`,
                         quantity: 1,
                         unitPrice: tier.rate,
+                        unitLabel: rateTypeToUnitLabel(tier.rateType),
                       })
                     }
                     className="rounded-md border border-border px-2.5 py-1 text-xs hover:border-primary hover:text-primary"
                   >
-                    {tier.name} - ${tier.rate.toFixed(2)}/{tier.rateType === "hourly" ? "hr" : "session"}
+                    {tier.name} - ${tier.rate.toFixed(2)}/{rateTypeToUnitLabel(tier.rateType)}
                   </button>
                 ))}
               </div>

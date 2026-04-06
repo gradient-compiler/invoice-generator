@@ -6,6 +6,7 @@ import {
   Image,
   StyleSheet,
 } from "@react-pdf/renderer";
+import "@/pdf/fonts";
 import type { InvoicePDFData } from "@/types";
 
 const ACCENT = "#1a365d";
@@ -29,6 +30,7 @@ const styles = StyleSheet.create({
   },
   businessName: {
     fontSize: 18,
+    fontFamily: "EB Garamond",
     fontWeight: "bold",
     color: ACCENT,
     marginBottom: 2,

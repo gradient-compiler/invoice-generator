@@ -4,6 +4,7 @@ import { eq, and, gte, lte, sql } from "drizzle-orm";
 import { ensureDbInitialized } from "@/db/init";
 import { buildCsv } from "@/lib/csv";
 import { requireAuth } from "@/lib/auth";
+import { formatDisplayDate } from "@/lib/utils";
 import { checkRateLimit, getClientIp } from "@/lib/rate-limit";
 import { logAudit } from "@/lib/audit";
 
@@ -52,11 +53,16 @@ export async function GET(request: Request) {
       .orderBy(sql`${invoices.issueDate} DESC`)
       .all();
 
+    const formattedRows = rows.map((r) => ({
+      ...r,
+      "Issue Date": formatDisplayDate(r["Issue Date"] as string),
+      "Due Date": formatDisplayDate(r["Due Date"] as string),
+    }));
     const headers = [
       "Invoice #", "Client", "Status", "Issue Date", "Due Date",
       "Currency", "Subtotal", "Discount", "Tax", "Total", "Amount Paid", "Balance Due",
     ];
-    const csv = buildCsv(headers, rows as Record<string, unknown>[]);
+    const csv = buildCsv(headers, formattedRows as Record<string, unknown>[]);
     const date = new Date().toISOString().split("T")[0];
 
     logAudit({ action: "export_data", entityType: "export", detail: "invoices CSV", request });

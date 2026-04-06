@@ -6,6 +6,7 @@ import {
   Image,
   StyleSheet,
 } from "@react-pdf/renderer";
+import "@/pdf/fonts";
 import type { InvoicePDFData } from "@/types";
 import { PDFLineItemsTable } from "../components/pdf-line-items-table";
 import { PDFTotals } from "../components/pdf-totals";
@@ -48,6 +49,7 @@ const styles = StyleSheet.create({
   businessInfo: {},
   businessName: {
     fontSize: 20,
+    fontFamily: "EB Garamond",
     fontWeight: "bold",
     color: NAVY,
     marginBottom: 4,
@@ -59,31 +61,14 @@ const styles = StyleSheet.create({
   },
   headerRight: {
     alignItems: "flex-end" as const,
+    justifyContent: "center" as const,
   },
   invoiceTitle: {
     fontSize: 22,
     fontWeight: "bold",
     color: NAVY,
-    marginBottom: 8,
     textTransform: "uppercase" as const,
     letterSpacing: 2,
-  },
-  headerDetailRow: {
-    flexDirection: "row",
-    justifyContent: "flex-end",
-    marginBottom: 2,
-  },
-  headerDetailLabel: {
-    fontSize: 9,
-    color: MED_GRAY,
-    marginRight: 6,
-  },
-  headerDetailValue: {
-    fontSize: 9,
-    color: NAVY,
-    fontWeight: "bold",
-    width: 90,
-    textAlign: "right" as const,
   },
   // Two-column section below header
   twoCols: {
@@ -227,20 +212,6 @@ export function CorporateTemplate({ data }: CorporateProps) {
           </View>
           <View style={styles.headerRight}>
             <Text style={styles.invoiceTitle}>Invoice</Text>
-            <View style={styles.headerDetailRow}>
-              <Text style={styles.headerDetailLabel}>Invoice #</Text>
-              <Text style={styles.headerDetailValue}>
-                {data.invoiceNumber}
-              </Text>
-            </View>
-            <View style={styles.headerDetailRow}>
-              <Text style={styles.headerDetailLabel}>Issue Date</Text>
-              <Text style={styles.headerDetailValue}>{data.issueDate}</Text>
-            </View>
-            <View style={styles.headerDetailRow}>
-              <Text style={styles.headerDetailLabel}>Due Date</Text>
-              <Text style={styles.headerDetailValue}>{data.dueDate}</Text>
-            </View>
           </View>
         </View>
 

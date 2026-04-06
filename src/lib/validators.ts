@@ -89,7 +89,7 @@ export const invoiceLineItemSchema = z.object({
   unitPrice: z.coerce
     .number({ error: "Unit price must be a number" })
     .min(0, "Unit price cannot be negative"),
-  unitLabel: z.string().default("hr"),
+  unitLabel: z.string().optional().nullable().default("hr"),
   sortOrder: z.coerce.number().int().default(0),
   sessionId: z.coerce.number().int().positive().optional().nullable(),
 });
@@ -110,9 +110,9 @@ export const invoiceSchema = z.object({
   discountLabel: z.string().optional().nullable(),
   taxRate: z.coerce.number().min(0).default(0),
   notes: z.string().optional().nullable(),
-  paymentTerms: z.string().default("Due upon receipt"),
+  paymentTerms: z.string().optional().nullable().default("Due upon receipt"),
   lateFeeNote: z.string().optional().nullable(),
-  template: z.string().default("clean-professional"),
+  template: z.string().optional().nullable().default("clean-professional"),
   billingMonth: z.string().optional().nullable(),
   lineItems: z.array(invoiceLineItemSchema).min(1, "At least one line item is required"),
 });

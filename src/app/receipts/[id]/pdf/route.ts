@@ -4,7 +4,9 @@ import { receipts, invoices, clients, businessSettings } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { ensureDbInitialized } from "@/db/init";
 import { renderReceiptPDF } from "@/pdf/render-receipt";
+import { safeDecrypt } from "@/lib/crypto";
 import type { ReceiptPDFData } from "@/types";
+import { formatDisplayDate } from "@/lib/utils";
 
 export async function GET(
   request: Request,
@@ -59,13 +61,13 @@ export async function GET(
 
       receiptNumber: receipt.receiptNumber,
       invoiceNumber: receipt.invoiceNumber || "",
-      paymentDate: receipt.paymentDate,
+      paymentDate: formatDisplayDate(receipt.paymentDate),
       paymentMethod: receipt.paymentMethod || "",
       amount: receipt.amount,
       currency: receipt.currency || "SGD",
 
       clientName: receipt.clientName || "",
-      clientParentName: receipt.clientParentName || undefined,
+      clientParentName: safeDecrypt(receipt.clientParentName) || undefined,
 
       notes: receipt.notes || undefined,
     };

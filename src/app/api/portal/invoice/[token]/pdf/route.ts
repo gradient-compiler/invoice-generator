@@ -8,6 +8,7 @@ import { generatePayNowQR } from "@/lib/paynow-qr";
 import { safeDecrypt } from "@/lib/crypto";
 import { checkRateLimit, getClientIp } from "@/lib/rate-limit";
 import type { InvoicePDFData } from "@/types";
+import { formatDisplayDate } from "@/lib/utils";
 
 export async function GET(
   request: Request,
@@ -113,14 +114,14 @@ export async function GET(
       logoPath: settings?.logoPath ? path.join(process.cwd(), "public", settings.logoPath) : undefined,
       gstNumber: safeDecrypt(settings?.gstNumber) || undefined,
       invoiceNumber: invoice.invoiceNumber,
-      issueDate: invoice.issueDate,
-      dueDate: invoice.dueDate,
+      issueDate: formatDisplayDate(invoice.issueDate),
+      dueDate: formatDisplayDate(invoice.dueDate),
       status: invoice.status || "sent",
       clientName: invoice.clientName || "",
-      clientParentName: invoice.clientParentName || undefined,
-      clientAddress: invoice.clientAddress || undefined,
-      clientPhone: invoice.clientPhone || undefined,
-      clientEmail: invoice.clientEmail || undefined,
+      clientParentName: safeDecrypt(invoice.clientParentName) || undefined,
+      clientAddress: safeDecrypt(invoice.clientAddress) || undefined,
+      clientPhone: safeDecrypt(invoice.clientPhone) || undefined,
+      clientEmail: safeDecrypt(invoice.clientEmail) || undefined,
       lineItems: lineItems.map((item) => ({
         description: item.description,
         quantity: item.quantity,

@@ -4,6 +4,7 @@ import { eq, and, gte, lte, sql } from "drizzle-orm";
 import { ensureDbInitialized } from "@/db/init";
 import { buildCsv } from "@/lib/csv";
 import { requireAuth } from "@/lib/auth";
+import { formatDisplayDate } from "@/lib/utils";
 
 export async function GET(request: Request) {
   try {
@@ -35,8 +36,12 @@ export async function GET(request: Request) {
       .orderBy(sql`${receipts.paymentDate} DESC`)
       .all();
 
+    const formattedRows = rows.map((r) => ({
+      ...r,
+      "Payment Date": formatDisplayDate(r["Payment Date"] as string),
+    }));
     const headers = ["Receipt #", "Invoice #", "Client", "Payment Date", "Method", "Amount", "Notes"];
-    const csv = buildCsv(headers, rows as Record<string, unknown>[]);
+    const csv = buildCsv(headers, formattedRows as Record<string, unknown>[]);
     const date = new Date().toISOString().split("T")[0];
 
     return new Response(csv, {

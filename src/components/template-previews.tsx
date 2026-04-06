@@ -375,6 +375,67 @@ export function CompactDetailedPreview() {
   );
 }
 
+export function CompactPreview() {
+  const dark = "#1a1a1a";
+  const mid = "#555555";
+  return (
+    <div
+      className="mb-3 aspect-[210/297] rounded border bg-white overflow-hidden"
+      style={{ padding: "8px", fontSize: 0 }}
+    >
+      {/* Compact header */}
+      <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
+        <div>
+          {bar("40px", dark, "5px")}
+          <div style={{ marginTop: 2 }}>{bar("32px", "#999")}</div>
+        </div>
+        <div style={{ textAlign: "right" }}>
+          {bar("32px", dark, "4px")}
+          <div style={{ marginTop: 2 }}>{bar("24px", mid)}</div>
+        </div>
+      </div>
+      {/* Bill To - minimal */}
+      <div style={{ marginBottom: 4 }}>
+        {bar("14px", "#999", "2px")}
+        <div style={{ marginTop: 2 }}>{bar("32px", dark, "3px")}</div>
+      </div>
+      {/* Table compact */}
+      <div style={{ display: "flex", justifyContent: "space-between", padding: "1px 0", borderBottom: `1px solid ${dark}`, marginBottom: 1 }}>
+        {bar("55%", mid)}
+        {bar("12%", mid)}
+        {bar("12%", mid)}
+        {bar("12%", mid)}
+      </div>
+      {Array.from({ length: 4 }, (_, i) => (
+        <div key={i} style={{ display: "flex", justifyContent: "space-between", padding: "1.5px 0", borderBottom: "0.5px solid #e5e5e5" }}>
+          {bar("55%", "#999")}
+          {bar("12%", "#ccc")}
+          {bar("12%", "#ccc")}
+          {bar("12%", mid)}
+        </div>
+      ))}
+      {/* Totals */}
+      <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 4 }}>
+        <div style={{ width: "36%" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 1 }}>
+            {bar("50%", "#999")}
+            {bar("30%", mid)}
+          </div>
+          <div style={{ display: "flex", justifyContent: "space-between", borderTop: `1px solid ${dark}`, paddingTop: 1 }}>
+            {bar("50%", dark, "3px")}
+            {bar("30%", dark, "3px")}
+          </div>
+        </div>
+      </div>
+      {/* Payment info */}
+      <div style={{ marginTop: 8 }}>
+        {bar("32px", "#ccc")}
+        <div style={{ marginTop: 2 }}>{bar("48px", "#e5e5e5")}</div>
+      </div>
+    </div>
+  );
+}
+
 export function ModernMinimalPreview() {
   const dark = "#1a1a1a";
   const mid = "#888888";

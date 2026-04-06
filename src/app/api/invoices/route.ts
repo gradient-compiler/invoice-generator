@@ -90,7 +90,7 @@ export async function POST(request: Request) {
     const parsed = invoiceSchema.safeParse(body);
     if (!parsed.success) {
       return NextResponse.json(
-        { error: parsed.error.issues.map((i) => i.message).join(", ") },
+        { error: parsed.error.issues.map((i) => `${i.path.join(".")}: ${i.message}`).join(", ") },
         { status: 400 }
       );
     }
@@ -128,7 +128,7 @@ export async function POST(request: Request) {
           description: string;
           quantity: number;
           unitPrice: number;
-          unitLabel?: string;
+          unitLabel?: string | null;
           amount?: number;
           sortOrder?: number;
           sessionId?: number | null;

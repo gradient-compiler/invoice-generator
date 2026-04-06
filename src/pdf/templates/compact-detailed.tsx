@@ -6,6 +6,7 @@ import {
   Image,
   StyleSheet,
 } from "@react-pdf/renderer";
+import "@/pdf/fonts";
 import type { InvoicePDFData } from "@/types";
 import { PDFLineItemsTable } from "../components/pdf-line-items-table";
 import { PDFTotals } from "../components/pdf-totals";
@@ -46,6 +47,7 @@ const styles = StyleSheet.create({
   },
   businessName: {
     fontSize: 14,
+    fontFamily: "EB Garamond",
     fontWeight: "bold",
     color: DARK,
     marginBottom: 2,
