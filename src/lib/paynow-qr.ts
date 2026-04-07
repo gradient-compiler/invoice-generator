@@ -21,6 +21,9 @@ export interface PayNowQRParams {
  * Build a TLV (Tag-Length-Value) field for the SGQR/EMV payload.
  */
 function tlv(tag: string, value: string): string {
+  if (value.length > 99) {
+    value = value.substring(0, 99);
+  }
   const len = String(value.length).padStart(2, "0");
   return `${tag}${len}${value}`;
 }
@@ -112,7 +115,8 @@ export function buildPayNowPayload(params: PayNowQRParams): string {
 
   // Additional data field (tag 62) with bill number (sub-tag 01 per PayNow v1.2)
   if (reference) {
-    const additionalData = tlv("01", reference);
+    const sanitized = reference.replace(/[^\w\s\-./]/g, "").substring(0, 25);
+    const additionalData = tlv("01", sanitized);
     payload += tlv("62", additionalData);
   }
 

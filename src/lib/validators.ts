@@ -157,30 +157,38 @@ export type CreditNoteFormValues = z.infer<typeof creditNoteSchema>;
 // ---------------------------------------------------------------------------
 export const businessSettingsSchema = z.object({
   businessName: z.string().min(1, "Business name is required"),
-  address: z.string().optional(),
-  phone: z.string().optional(),
-  email: z.string().email("Invalid email").optional().or(z.literal("")),
+  address: z.string().optional().nullable(),
+  phone: z.string().optional().nullable(),
+  email: z.string().email("Invalid email").optional().nullable().or(z.literal("")),
   gstRegistered: z.coerce.boolean().default(false),
   gstRate: z.coerce.number().min(0).max(100).default(9),
-  gstNumber: z.string().optional(),
+  gstNumber: z.string().optional().nullable(),
   defaultCurrency: z.string().default("SGD"),
   invoicePrefix: z.string().min(1).default("INV"),
   receiptPrefix: z.string().min(1).default("RCP"),
   creditNotePrefix: z.string().min(1).default("CN"),
-  bankName: z.string().optional(),
-  bankAccount: z.string().optional(),
-  bankHolder: z.string().optional(),
-  paynowNumber: z.string().optional(),
+  bankName: z.string().optional().nullable(),
+  bankAccount: z.string().optional().nullable(),
+  bankHolder: z.string().optional().nullable(),
+  paynowNumber: z
+    .string()
+    .regex(
+      /^(\+?65)?\d{8}$|^[A-Za-z0-9]{9,10}$/,
+      "Must be a valid SG phone number or UEN"
+    )
+    .optional()
+    .nullable()
+    .or(z.literal("")),
   defaultTemplate: z.string().default("clean-professional"),
   defaultPaymentTerms: z.string().default("Due upon receipt"),
-  latePaymentNote: z.string().optional(),
-  smtpHost: z.string().optional(),
-  smtpPort: z.coerce.number().int().min(1).max(65535).optional(),
-  smtpUser: z.string().optional(),
-  smtpPass: z.string().optional(),
-  smtpFromName: z.string().optional(),
-  smtpFromEmail: z.string().email("Invalid SMTP from email").optional().or(z.literal("")),
-  smtpSecure: z.coerce.boolean().optional(),
+  latePaymentNote: z.string().optional().nullable(),
+  smtpHost: z.string().optional().nullable(),
+  smtpPort: z.coerce.number().int().min(1).max(65535).optional().nullable(),
+  smtpUser: z.string().optional().nullable(),
+  smtpPass: z.string().optional().nullable(),
+  smtpFromName: z.string().optional().nullable(),
+  smtpFromEmail: z.string().email("Invalid SMTP from email").optional().nullable().or(z.literal("")),
+  smtpSecure: z.coerce.boolean().optional().nullable(),
 });
 
 export type BusinessSettingsFormValues = z.infer<typeof businessSettingsSchema>;

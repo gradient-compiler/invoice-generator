@@ -30,9 +30,18 @@ export async function POST(
       return NextResponse.json({ error: "Invoice not found" }, { status: 404 });
     }
 
-    // If already has a token, return it
+    // If already has a valid (non-expired) token, return it
     if (existing.shareToken) {
-      return NextResponse.json({ token: existing.shareToken });
+      const expired =
+        existing.shareTokenExpiresAt &&
+        new Date(existing.shareTokenExpiresAt) < new Date();
+      if (!expired) {
+        return NextResponse.json({
+          token: existing.shareToken,
+          expiresAt: existing.shareTokenExpiresAt,
+        });
+      }
+      // Token expired — fall through to generate a new one
     }
 
     const token = crypto.randomUUID();
