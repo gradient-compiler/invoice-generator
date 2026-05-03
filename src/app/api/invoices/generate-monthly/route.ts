@@ -303,7 +303,7 @@ export async function POST(request: Request) {
           paymentTerms:
             settings.defaultPaymentTerms || "Due upon receipt",
           lateFeeNote: settings.latePaymentNote || null,
-          template: settings.defaultTemplate || "clean-professional",
+          template: settings.defaultTemplate || "compact",
           billingMonth: month,
         })
         .returning()

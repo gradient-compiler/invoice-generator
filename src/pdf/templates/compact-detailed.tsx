@@ -392,7 +392,10 @@ export function CompactDetailedTemplate({ data }: CompactDetailedProps) {
             {/* QR code on the right */}
             {data.paynowQrDataUri && (
               <View style={styles.slipRight}>
-                <PDFQRCode qrDataUri={data.paynowQrDataUri} />
+                <PDFQRCode
+                  qrDataUri={data.paynowQrDataUri}
+                  paynowNumber={data.paynowNumber}
+                />
               </View>
             )}
           </View>

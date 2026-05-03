@@ -1,6 +1,6 @@
 import path from "path";
 import { db } from "@/db";
-import { receipts, invoices, clients, businessSettings } from "@/db/schema";
+import { receipts, invoices, clients, businessSettings, invoiceLineItems } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { ensureDbInitialized } from "@/db/init";
 import { renderReceiptPDF } from "@/pdf/render-receipt";
@@ -24,6 +24,9 @@ export async function GET(
         receiptNumber: receipts.receiptNumber,
         invoiceId: receipts.invoiceId,
         invoiceNumber: invoices.invoiceNumber,
+        invoiceIssueDate: invoices.issueDate,
+        invoiceBillingMonth: invoices.billingMonth,
+        invoiceTotal: invoices.total,
         paymentDate: receipts.paymentDate,
         paymentMethod: receipts.paymentMethod,
         amount: receipts.amount,
@@ -41,6 +44,14 @@ export async function GET(
     if (!receipt) {
       return new Response("Receipt not found", { status: 404 });
     }
+
+    // Fetch the invoice's line items so the receipt shows what was paid for
+    const lineItems = db
+      .select()
+      .from(invoiceLineItems)
+      .where(eq(invoiceLineItems.invoiceId, receipt.invoiceId))
+      .orderBy(invoiceLineItems.sortOrder)
+      .all();
 
     // Fetch business settings
     const settings = db
@@ -61,13 +72,26 @@ export async function GET(
 
       receiptNumber: receipt.receiptNumber,
       invoiceNumber: receipt.invoiceNumber || "",
+      invoiceIssueDate: receipt.invoiceIssueDate
+        ? formatDisplayDate(receipt.invoiceIssueDate)
+        : undefined,
+      invoiceBillingMonth: receipt.invoiceBillingMonth || undefined,
       paymentDate: formatDisplayDate(receipt.paymentDate),
       paymentMethod: receipt.paymentMethod || "",
       amount: receipt.amount,
+      invoiceTotal: receipt.invoiceTotal ?? undefined,
       currency: receipt.currency || "SGD",
 
       clientName: receipt.clientName || "",
       clientParentName: safeDecrypt(receipt.clientParentName) || undefined,
+
+      lineItems: lineItems.map((item) => ({
+        description: item.description,
+        quantity: item.quantity,
+        unitPrice: item.unitPrice,
+        unitLabel: item.unitLabel || "hr",
+        amount: item.amount,
+      })),
 
       notes: receipt.notes || undefined,
     };

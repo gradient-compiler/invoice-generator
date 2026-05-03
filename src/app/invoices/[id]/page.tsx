@@ -50,6 +50,18 @@ function formatDate(d: string) {
   });
 }
 
+function formatPaymentMethod(method: string | null | undefined) {
+  if (!method) return "\u2014";
+  const map: Record<string, string> = {
+    paynow: "PayNow",
+    bank_transfer: "Bank Transfer",
+    cash: "Cash",
+    cheque: "Cheque",
+    other: "Other",
+  };
+  return map[method] ?? method;
+}
+
 interface EditLineItem {
   key: string;
   id?: number;
@@ -90,7 +102,7 @@ export default function InvoiceDetailPage() {
   const [paymentDate, setPaymentDate] = useState(
     new Date().toISOString().split("T")[0]
   );
-  const [paymentMethod, setPaymentMethod] = useState("PayNow");
+  const [paymentMethod, setPaymentMethod] = useState("paynow");
   const [paymentAmount, setPaymentAmount] = useState(0);
 
   // Payment history
@@ -113,7 +125,7 @@ export default function InvoiceDetailPage() {
   const [editClientId, setEditClientId] = useState<number>(0);
   const [editIssueDate, setEditIssueDate] = useState("");
   const [editDueDate, setEditDueDate] = useState("");
-  const [editTemplate, setEditTemplate] = useState("clean-professional");
+  const [editTemplate, setEditTemplate] = useState("compact");
   const [editCurrency, setEditCurrency] = useState("SGD");
   const [editPaymentTerms, setEditPaymentTerms] = useState("Due upon receipt");
   const [editNotes, setEditNotes] = useState("");
@@ -164,7 +176,7 @@ export default function InvoiceDetailPage() {
     setEditClientId(invoice.clientId);
     setEditIssueDate(invoice.issueDate);
     setEditDueDate(invoice.dueDate);
-    setEditTemplate(invoice.template ?? "clean-professional");
+    setEditTemplate(invoice.template ?? "compact");
     setEditCurrency(invoice.currency ?? "SGD");
     setEditPaymentTerms(invoice.paymentTerms ?? "Due upon receipt");
     setEditNotes(invoice.notes ?? "");
@@ -319,7 +331,10 @@ export default function InvoiceDetailPage() {
           amount: paymentAmount,
         }),
       });
-      if (!res.ok) throw new Error("Failed to record payment");
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data?.error || `Failed to record payment (${res.status})`);
+      }
       fetchInvoice();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong");
@@ -969,9 +984,11 @@ export default function InvoiceDetailPage() {
                 onChange={(e) => setPaymentMethod(e.target.value)}
                 className={inputClass}
               >
-                <option value="PayNow">PayNow</option>
-                <option value="Bank Transfer">Bank Transfer</option>
-                <option value="Cash">Cash</option>
+                <option value="paynow">PayNow</option>
+                <option value="bank_transfer">Bank Transfer</option>
+                <option value="cash">Cash</option>
+                <option value="cheque">Cheque</option>
+                <option value="other">Other</option>
               </select>
             </div>
           </div>
@@ -1015,7 +1032,7 @@ export default function InvoiceDetailPage() {
                 <tr key={p.id}>
                   <td className="px-4 py-2">{p.receiptNumber}</td>
                   <td className="px-4 py-2">{formatDate(p.paymentDate)}</td>
-                  <td className="px-4 py-2">{p.paymentMethod ?? "—"}</td>
+                  <td className="px-4 py-2">{formatPaymentMethod(p.paymentMethod)}</td>
                   <td className="px-4 py-2 text-right font-medium tabular-nums">{formatCurrency(p.amount, cur)}</td>
                 </tr>
               ))}

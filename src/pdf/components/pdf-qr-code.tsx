@@ -18,13 +18,17 @@ const styles = StyleSheet.create({
 
 interface PDFQRCodeProps {
   qrDataUri: string;
+  paynowNumber?: string;
 }
 
-export function PDFQRCode({ qrDataUri }: PDFQRCodeProps) {
+export function PDFQRCode({ qrDataUri, paynowNumber }: PDFQRCodeProps) {
   return (
     <View style={styles.container}>
       <Image src={qrDataUri} style={styles.image} />
       <Text style={styles.label}>Scan to PayNow</Text>
+      {paynowNumber && (
+        <Text style={styles.label}>or PayNow to {paynowNumber}</Text>
+      )}
     </View>
   );
 }

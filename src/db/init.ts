@@ -28,7 +28,7 @@ export function ensureDbInitialized() {
     bank_account TEXT,
     bank_holder TEXT,
     paynow_number TEXT,
-    default_template TEXT DEFAULT 'clean-professional',
+    default_template TEXT DEFAULT 'compact',
     default_payment_terms TEXT DEFAULT 'Due upon receipt',
     late_payment_note TEXT,
     created_at TEXT DEFAULT (datetime('now')),
@@ -91,7 +91,7 @@ export function ensureDbInitialized() {
     notes TEXT,
     payment_terms TEXT DEFAULT 'Due upon receipt',
     late_fee_note TEXT,
-    template TEXT DEFAULT 'clean-professional',
+    template TEXT DEFAULT 'compact',
     billing_month TEXT,
     duplicated_from INTEGER,
     created_at TEXT DEFAULT (datetime('now')),
@@ -193,7 +193,7 @@ export function ensureDbInitialized() {
     discount_value REAL DEFAULT 0,
     discount_label TEXT,
     payment_terms TEXT DEFAULT 'Due upon receipt',
-    template TEXT DEFAULT 'clean-professional',
+    template TEXT DEFAULT 'compact',
     notes TEXT,
     next_generate_date TEXT NOT NULL,
     last_generated_date TEXT,
@@ -224,8 +224,16 @@ export function ensureDbInitialized() {
       receiptPrefix: "RCP",
       creditNotePrefix: "CN",
       defaultPaymentTerms: "Due upon receipt",
-      defaultTemplate: "clean-professional",
+      defaultTemplate: "compact",
     }).run();
+  } else {
+    // One-shot migration: flip rows still on the prior default to "compact".
+    // Idempotent — leaves any explicit non-default choice alone.
+    db.run(sql`
+      UPDATE business_settings
+      SET default_template = 'compact'
+      WHERE default_template IS NULL OR default_template = 'clean-professional'
+    `);
   }
 
   const rates = db.select().from(rateTiers).all();

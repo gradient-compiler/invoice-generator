@@ -184,7 +184,7 @@ export async function POST(request: Request) {
         notes: notes || null,
         paymentTerms: paymentTerms || settings?.defaultPaymentTerms || "Due upon receipt",
         lateFeeNote: lateFeeNote || settings?.latePaymentNote || null,
-        template: template || settings?.defaultTemplate || "clean-professional",
+        template: template || settings?.defaultTemplate || "compact",
         billingMonth: billingMonth || null,
       })
       .returning()

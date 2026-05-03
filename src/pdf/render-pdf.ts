@@ -26,7 +26,7 @@ export async function renderInvoicePDF(
   data: InvoicePDFData,
   templateSlug: string
 ): Promise<Buffer> {
-  const Template = TEMPLATES[templateSlug] ?? TEMPLATES["clean-professional"];
+  const Template = TEMPLATES[templateSlug] ?? TEMPLATES["compact"];
   const element = React.createElement(Template, { data });
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const buffer = await renderToBuffer(element as any);

@@ -389,6 +389,9 @@ export function ModernMinimalTemplate({ data }: ModernMinimalProps) {
             <View style={styles.qrRight}>
               <Image src={data.paynowQrDataUri} style={styles.qrImage} />
               <Text style={styles.qrLabel}>Scan to PayNow</Text>
+              {data.paynowNumber && (
+                <Text style={styles.qrLabel}>or PayNow to {data.paynowNumber}</Text>
+              )}
             </View>
           )}
         </View>

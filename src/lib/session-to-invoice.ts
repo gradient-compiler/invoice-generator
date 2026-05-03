@@ -266,7 +266,7 @@ export async function generateMonthlyInvoices(
         amountPaid: 0,
         paymentTerms: settings.defaultPaymentTerms || "Due upon receipt",
         lateFeeNote: settings.latePaymentNote,
-        template: settings.defaultTemplate || "clean-professional",
+        template: settings.defaultTemplate || "compact",
         billingMonth: month,
       })
       .run();

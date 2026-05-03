@@ -63,7 +63,7 @@ export default function RecurringInvoicesPage() {
     new Date().toISOString().split("T")[0]
   );
   const [formPaymentTerms, setFormPaymentTerms] = useState("Due upon receipt");
-  const [formTemplate, setFormTemplate] = useState("clean-professional");
+  const [formTemplate, setFormTemplate] = useState("compact");
   const [formNotes, setFormNotes] = useState("");
   const [formLineItems, setFormLineItems] = useState<LineItem[]>([
     { description: "", quantity: 1, unitPrice: 0, unitLabel: "hr" },
@@ -89,7 +89,7 @@ export default function RecurringInvoicesPage() {
     setFormFrequency("monthly");
     setFormNextDate(new Date().toISOString().split("T")[0]);
     setFormPaymentTerms("Due upon receipt");
-    setFormTemplate("clean-professional");
+    setFormTemplate("compact");
     setFormNotes("");
     setFormLineItems([
       { description: "", quantity: 1, unitPrice: 0, unitLabel: "hr" },
@@ -102,7 +102,7 @@ export default function RecurringInvoicesPage() {
     setFormFrequency(item.frequency);
     setFormNextDate(item.nextGenerateDate);
     setFormPaymentTerms(item.paymentTerms || "Due upon receipt");
-    setFormTemplate(item.template || "clean-professional");
+    setFormTemplate(item.template || "compact");
     setFormNotes(item.notes || "");
     setFormLineItems(JSON.parse(item.lineItemsJson));
     setEditingId(item.id);

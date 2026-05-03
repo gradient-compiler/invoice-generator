@@ -139,7 +139,7 @@ export async function POST(request: Request) {
           taxAmount,
           total,
           paymentTerms: rec.paymentTerms || "Due upon receipt",
-          template: rec.template || "clean-professional",
+          template: rec.template || "compact",
           notes: rec.notes,
         })
         .returning()

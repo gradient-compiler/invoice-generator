@@ -135,11 +135,12 @@ export async function POST(request: Request) {
       bankName: settings?.bankName || undefined,
       bankAccount: safeDecrypt(settings?.bankAccount) || undefined,
       bankHolder: safeDecrypt(settings?.bankHolder) || undefined,
+      paynowNumber: decryptedPaynow || undefined,
       paynowQrDataUri,
       notes: invoice.notes || undefined,
     };
 
-    const pdfBuffer = await renderInvoicePDF(pdfData, invoice.template || "clean-professional");
+    const pdfBuffer = await renderInvoicePDF(pdfData, invoice.template || "compact");
     const businessName = settings?.businessName || "Invoice Generator";
     const fc = (n: number) => `$${n.toFixed(2)}`;
 

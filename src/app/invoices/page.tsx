@@ -5,7 +5,26 @@ import { PageHeader } from "@/components/layout/header";
 import Link from "next/link";
 import { Pencil } from "lucide-react";
 import { useEffect, useState } from "react";
-import type { Client, InvoiceWithItems, InvoiceStatus } from "@/types";
+import type { Client, Invoice, InvoiceStatus } from "@/types";
+
+type InvoiceListRow = Pick<
+  Invoice,
+  | "id"
+  | "invoiceNumber"
+  | "clientId"
+  | "status"
+  | "issueDate"
+  | "dueDate"
+  | "currency"
+  | "subtotal"
+  | "discountAmount"
+  | "taxRate"
+  | "taxAmount"
+  | "total"
+  | "amountPaid"
+  | "billingMonth"
+  | "createdAt"
+> & { clientName: string | null };
 
 const inputClass =
   "w-full rounded-md border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring";
@@ -54,7 +73,7 @@ function formatDate(d: string) {
 }
 
 export default function InvoicesPage() {
-  const [invoices, setInvoices] = useState<InvoiceWithItems[]>([]);
+  const [invoices, setInvoices] = useState<InvoiceListRow[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -250,7 +269,7 @@ export default function InvoicesPage() {
                       </Link>
                     </td>
                     <td className="px-4 py-3">
-                      {inv.client?.name ?? "\u2014"}
+                      {inv.clientName ?? "\u2014"}
                     </td>
                     <td className="hidden px-4 py-3 text-muted-foreground sm:table-cell">
                       {formatDate(inv.issueDate)}

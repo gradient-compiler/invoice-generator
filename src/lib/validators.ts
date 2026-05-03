@@ -112,7 +112,7 @@ export const invoiceSchema = z.object({
   notes: z.string().optional().nullable(),
   paymentTerms: z.string().optional().nullable().default("Due upon receipt"),
   lateFeeNote: z.string().optional().nullable(),
-  template: z.string().optional().nullable().default("clean-professional"),
+  template: z.string().optional().nullable().default("compact"),
   billingMonth: z.string().optional().nullable(),
   lineItems: z.array(invoiceLineItemSchema).min(1, "At least one line item is required"),
 });
@@ -179,7 +179,7 @@ export const businessSettingsSchema = z.object({
     .optional()
     .nullable()
     .or(z.literal("")),
-  defaultTemplate: z.string().default("clean-professional"),
+  defaultTemplate: z.string().default("compact"),
   defaultPaymentTerms: z.string().default("Due upon receipt"),
   latePaymentNote: z.string().optional().nullable(),
   smtpHost: z.string().optional().nullable(),

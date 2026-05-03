@@ -104,6 +104,7 @@ export interface InvoicePDFData {
   bankName?: string;
   bankAccount?: string;
   bankHolder?: string;
+  paynowNumber?: string;
   paynowQrDataUri?: string;
 
   notes?: string;
@@ -118,13 +119,24 @@ export interface ReceiptPDFData {
 
   receiptNumber: string;
   invoiceNumber: string;
+  invoiceIssueDate?: string;
+  invoiceBillingMonth?: string;
   paymentDate: string;
   paymentMethod: string;
   amount: number;
+  invoiceTotal?: number;
   currency: string;
 
   clientName: string;
   clientParentName?: string;
+
+  lineItems?: Array<{
+    description: string;
+    quantity: number;
+    unitPrice: number;
+    unitLabel: string;
+    amount: number;
+  }>;
 
   notes?: string;
 }

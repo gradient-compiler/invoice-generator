@@ -85,7 +85,7 @@ export async function GET(request: Request) {
         bankAccount: null,
         bankHolder: null,
         paynowNumber: null,
-        defaultTemplate: "clean-professional",
+        defaultTemplate: "compact",
         defaultPaymentTerms: "Due upon receipt",
         latePaymentNote: null,
       });

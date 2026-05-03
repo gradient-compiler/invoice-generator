@@ -282,7 +282,10 @@ export function CompactTemplate({ data }: CompactProps) {
             </View>
             {data.paynowQrDataUri && (
               <View style={styles.paymentRight}>
-                <PDFQRCode qrDataUri={data.paynowQrDataUri} />
+                <PDFQRCode
+                  qrDataUri={data.paynowQrDataUri}
+                  paynowNumber={data.paynowNumber}
+                />
               </View>
             )}
           </View>

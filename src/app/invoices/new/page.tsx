@@ -71,7 +71,7 @@ export default function NewInvoicePage() {
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
   const [issueDate, setIssueDate] = useState(today());
   const [dueDate, setDueDate] = useState(today());
-  const [template, setTemplate] = useState("clean-professional");
+  const [template, setTemplate] = useState("compact");
   const [currency, setCurrency] = useState("SGD");
   const [paymentTerms, setPaymentTerms] = useState("Due upon receipt");
   const [notes, setNotes] = useState("");

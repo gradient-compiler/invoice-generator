@@ -145,12 +145,13 @@ export async function GET(
       bankName: settings?.bankName || undefined,
       bankAccount: safeDecrypt(settings?.bankAccount) || undefined,
       bankHolder: safeDecrypt(settings?.bankHolder) || undefined,
+      paynowNumber: decryptedPaynow || undefined,
       paynowQrDataUri,
 
       notes: invoice.notes || undefined,
     };
 
-    const templateSlug = invoice.template || "clean-professional";
+    const templateSlug = invoice.template || "compact";
     const pdfBuffer = await renderInvoicePDF(pdfData, templateSlug);
 
     return new Response(new Uint8Array(pdfBuffer), {

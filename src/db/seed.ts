@@ -18,7 +18,7 @@ export async function seedDatabase() {
       receiptPrefix: "RCP",
       creditNotePrefix: "CN",
       defaultPaymentTerms: "Due upon receipt",
-      defaultTemplate: "clean-professional",
+      defaultTemplate: "compact",
     });
   }
 

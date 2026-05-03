@@ -210,9 +210,9 @@ describe("invoiceSchema", () => {
     expect(result.discountValue).toBe(0);
   });
 
-  it("defaults template to clean-professional", () => {
+  it("defaults template to compact", () => {
     const result = invoiceSchema.parse(validInvoice);
-    expect(result.template).toBe("clean-professional");
+    expect(result.template).toBe("compact");
   });
 });
 

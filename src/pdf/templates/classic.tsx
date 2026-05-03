@@ -414,6 +414,9 @@ export function ClassicTemplate({ data }: ClassicProps) {
           <View style={styles.qrCenter}>
             <Image src={data.paynowQrDataUri} style={styles.qrImage} />
             <Text style={styles.qrLabel}>Scan to PayNow</Text>
+            {data.paynowNumber && (
+              <Text style={styles.qrLabel}>or PayNow to {data.paynowNumber}</Text>
+            )}
           </View>
         )}
 

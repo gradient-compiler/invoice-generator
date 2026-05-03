@@ -52,7 +52,7 @@ export async function PUT(
       discountValue: z.number().min(0).default(0),
       discountLabel: z.string().optional().nullable(),
       paymentTerms: z.string().default("Due upon receipt"),
-      template: z.string().default("clean-professional"),
+      template: z.string().default("compact"),
       notes: z.string().optional().nullable(),
       nextGenerateDate: z.string().min(1, "Next generate date required"),
     });

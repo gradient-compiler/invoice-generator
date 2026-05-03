@@ -295,7 +295,10 @@ export function CreativeTemplate({ data }: CreativeProps) {
           </View>
           {data.paynowQrDataUri && (
             <View style={styles.bottomRight}>
-              <PDFQRCode qrDataUri={data.paynowQrDataUri} />
+              <PDFQRCode
+                qrDataUri={data.paynowQrDataUri}
+                paynowNumber={data.paynowNumber}
+              />
             </View>
           )}
         </View>
